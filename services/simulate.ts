@@ -1,6 +1,9 @@
 import { conn } from "../dbconnect";
 import { CONFIG } from "./optimizer";
 
+export const SIM_FIRSTNAME = "ลูกค้า";
+export const SIM_ADDRESS = "บ้านจำลอง";
+
 const randInt = (min: number, max: number) =>
   Math.floor(Math.random() * (max - min + 1)) + min;
 
