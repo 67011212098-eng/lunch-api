@@ -1,7 +1,8 @@
 import express from "express";
 import { conn } from "../dbconnect";
 import { OrderPostRequest } from "../model/order";
-import { simulateOrders } from "../services/simulate";
+import { simulateOrders, SIM_FIRSTNAME, SIM_ADDRESS } from "../services/simulate";
+import { DISTANCE_KM_SQL, parseNearby } from "../services/geo";
 
 export const router = express.Router();
 
@@ -11,6 +12,32 @@ const today = () =>
 const validBoxes = (b: unknown) => Number.isInteger(b) && (b as number) >= 1 && (b as number) <= 3;
 const validDate = (d: unknown) => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d);
 
+// GET /order/nearby?lat=16.2469&lng=103.2522
+router.get("/nearby", async (req, res) => {
+  try {
+    const q = parseNearby(req.query, 2);
+    if (typeof q === "string") {
+      res.status(400).json({ message: q });
+      return;
+    }
+    const [rows] = await conn.query(
+      `SELECT * FROM (
+         SELECT o.id, o.customer_id, o.boxes, o.order_date,
+                c.firstname, c.lastname, c.phone, c.address, c.lat, c.lng,
+                ROUND(${DISTANCE_KM_SQL("c.lat", "c.lng")}, 3) AS distance_km
+         FROM orders o JOIN customer c ON c.id = o.customer_id
+       ) t
+       WHERE distance_km <= ?
+       ORDER BY distance_km`,
+      [q.lat, q.lat, q.lng, q.radius]
+    );
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /order?date=2026-10-05  (ไม่ใส่ date = วันนี้)
 router.get("/", async (req, res) => {
   try {
     const date = req.query.date ? String(req.query.date) : today();
@@ -77,6 +104,25 @@ router.put("/:id", async (req, res) => {
   }
 });
 
+// ใช้ล้างออเดอร์จำลองตอนทดสอบ
+// DELETE /order/simulate   (?customers=true = ลบลูกค้าจำลองด้วย)
+router.delete("/simulate", async (req, res) => {
+  try {
+    const [o] = await conn.query("DELETE FROM orders");
+    let deletedCustomers = 0;
+    if (req.query.customers === "true") {
+      const [c] = await conn.query(
+        "DELETE FROM customer WHERE firstname = ? AND address = ?",
+        [SIM_FIRSTNAME, SIM_ADDRESS]
+      );
+      deletedCustomers = (c as any).affectedRows;
+    }
+    res.json({ deleted_orders: (o as any).affectedRows, deleted_customers: deletedCustomers });
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.delete("/:id", async (req, res) => {
   try {
     const [result] = await conn.query("DELETE FROM orders WHERE id = ?", [req.params.id]);
@@ -86,21 +132,6 @@ router.delete("/:id", async (req, res) => {
       return;
     }
     res.status(200).json({ affected_row: r.affectedRows });
-  } catch (error) {
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// ใช้ล้างออเดอร์จำลองตอนทดสอบ
-router.delete("/", async (req, res) => {
-  try {
-    const date = req.query.date;
-    if (!validDate(date)) {
-      res.status(400).json({ message: "date=YYYY-MM-DD is required" });
-      return;
-    }
-    const [result] = await conn.query("DELETE FROM orders WHERE order_date = ?", [date]);
-    res.status(200).json({ affected_row: (result as any).affectedRows });
   } catch (error) {
     res.status(500).json({ error: "Internal server error" });
   }
