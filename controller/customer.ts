@@ -73,7 +73,12 @@ router.get("/nearby", async (req, res) => {
 router.put("/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
+     if (!Number.isInteger(id)) {
+      res.status(400).json({ message: "id must be an integer" });
+      return;
+    }
     const [rows] = await conn.query("SELECT * FROM customer WHERE id = ?", [id]);
+
     const found = rows as any[];
     if (found.length === 0) {
       res.status(404).json({ message: "Customer not found" });
@@ -101,6 +106,10 @@ router.put("/:id", async (req, res) => {
 router.delete("/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      res.status(400).json({ message: "id must be an integer" });
+      return;
+    }
     const [cnt] = await conn.query("SELECT COUNT(*) AS n FROM orders WHERE customer_id = ?", [id]);
     const orderCount = Number((cnt as any[])[0].n);
 
