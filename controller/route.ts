@@ -110,3 +110,38 @@ router.post("/plan", async (req, res) => {
     db?.release();
   }
 });
+
+// DELETE /route/plan/:id - ลบแผนตาม id (ใบงานและจุดส่งของแผนนั้นถูกลบตามอัตโนมัติ)
+router.delete("/plan/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      res.status(400).json({ message: "id must be an integer" });
+      return;
+    }
+    const [result] = await conn.query("DELETE FROM plan WHERE id = ?", [id]);
+    const r = result as any;
+    if (r.affectedRows === 0) {
+      res.status(404).json({ message: "Plan not found" });
+      return;
+    }
+    res.status(200).json({ affected_row: r.affectedRows });
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// DELETE /route/plan?date=YYYY-MM-DD - ลบทุกแผนของวันนั้น (ต้องระบุ date)
+router.delete("/plan", async (req, res) => {
+  try {
+    const date = req.query.date;
+    if (!validDate(date)) {
+      res.status(400).json({ message: "date=YYYY-MM-DD is required" });
+      return;
+    }
+    const [result] = await conn.query("DELETE FROM plan WHERE plan_date = ?", [date]);
+    res.status(200).json({ affected_row: (result as any).affectedRows });
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
