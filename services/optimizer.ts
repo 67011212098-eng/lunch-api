@@ -101,15 +101,6 @@ export function bestOrder(group: Stop[]): Stop[] {
   return best;
 }
 
-export type Strategy = "cheapest" | "fastest" | "fewest" | "balanced";
-
-export const STRATEGY_LABELS: Record<Strategy, string> = {
-  cheapest: "ประหยัดที่สุด",
-  fastest: "ส่งถึงเร็วที่สุด",
-  fewest: "ใช้ไรเดอร์น้อยที่สุด",
-  balanced: "ทางเลือกสมดุล",
-};
-
 function seededRandom(seed: number) {
   let a = seed >>> 0;
   return () => {
@@ -123,47 +114,26 @@ function seededRandom(seed: number) {
 
 interface GroupEval {
   fee: number;
-  finish: number;
   late: number;
-  used: number;
 }
 
 function evalGroup(group: Stop[], cache: Map<string, GroupEval>): GroupEval {
-  if (group.length === 0) return { fee: 0, finish: CONFIG.departMinutes, late: 0, used: 0 };
+  if (group.length === 0) return { fee: 0, late: 0 };
   const key = group.map((s) => s.orderId).sort((a, b) => a - b).join(",");
   let e = cache.get(key);
   if (!e) {
     const info = routeInfo(bestOrder(group));
-    e = {
-      fee: info.fee,
-      finish: info.arrivals[info.arrivals.length - 1] ?? CONFIG.departMinutes,
-      late: info.lateCount,
-      used: 1,
-    };
+    e = { fee: info.fee, late: info.lateCount };
     cache.set(key, e);
   }
   return e;
 }
 
-export function optimizeGroups(orders: Stop[], strategy: Strategy, seed: number): Stop[][] {
+function optimizeGroups(orders: Stop[], seed: number): Stop[][] {
   const rand = seededRandom(seed);
-  const perRider = strategy === "fewest" ? 1000 : 0;
-  const perMinute = strategy === "fastest" ? 60 : strategy === "balanced" ? 5 + rand() * 20 : 0;
   const cache = new Map<string, GroupEval>();
 
-  const score = (parts: GroupEval[]) => {
-    let fee = 0;
-    let late = 0;
-    let used = 0;
-    let finish = CONFIG.departMinutes;
-    for (const p of parts) {
-      fee += p.fee;
-      late += p.late;
-      used += p.used;
-      finish = Math.max(finish, p.finish);
-    }
-    return fee + late * 1000 + used * perRider + (finish - CONFIG.departMinutes) * perMinute;
-  };
+  const score = (parts: GroupEval[]) => parts.reduce((sum, p) => sum + p.fee + p.late * 1000, 0);
 
   const groups = sweepGroups(orders, rand() * TWO_PI - Math.PI);
   while (groups.length < orders.length) groups.push([]);
@@ -215,13 +185,36 @@ export function optimizeGroups(orders: Stop[], strategy: Strategy, seed: number)
   return groups.filter((g) => g.length > 0).sort((x, y) => firstAngle(x) - firstAngle(y));
 }
 
+// สุ่มเริ่มต้นหลายรอบ (ตาม seed) แล้วเลือกแผนที่ค่าไรเดอร์ต่ำที่สุด
+const TRIES = 20;
+
+function groupsCost(groups: Stop[][]) {
+  return groups.reduce((sum, g) => {
+    const info = routeInfo(bestOrder(g));
+    return sum + info.fee + info.lateCount * 1000;
+  }, 0);
+}
+
+function bestGroups(orders: Stop[], seed: number): Stop[][] {
+  let best: Stop[][] = [];
+  let bestCost = Infinity;
+  for (let k = 0; k < TRIES; k++) {
+    const groups = optimizeGroups(orders, seed + k);
+    const cost = groupsCost(groups);
+    if (cost < bestCost) {
+      best = groups;
+      bestCost = cost;
+    }
+  }
+  return best;
+}
+
 const RIDER_COLORS = ["#e53935", "#43a047", "#1e88e5", "#fb8c00", "#8e24aa", "#00acc1", "#6d4c41", "#d81b60", "#7cb342", "#3949ab"];
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-export function buildPlan(orders: Stop[], strategy?: Strategy, seed = 0) {
-  const groups = strategy ? optimizeGroups(orders, strategy, seed) : sweepGroups(orders);
-  const riders = groups
+export function buildPlan(orders: Stop[], seed = 0) {
+  const riders = bestGroups(orders, seed)
     .map(bestOrder)
     .map((stops, i) => {
       const info = routeInfo(stops);

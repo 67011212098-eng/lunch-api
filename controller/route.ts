@@ -2,14 +2,12 @@ import express from "express";
 import { randomInt } from "crypto";
 import type { PoolConnection } from "mysql2/promise";
 import { conn } from "../dbconnect";
-import { Stop, Strategy, STRATEGY_LABELS, buildPlan } from "../services/optimizer";
+import { Stop, buildPlan } from "../services/optimizer";
 
 export const router = express.Router();
 
 const validDate = (d: unknown): d is string =>
   typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d);
-
-const STRATEGIES = Object.keys(STRATEGY_LABELS) as Strategy[];
 
 async function loadStops(date: string): Promise<Stop[]> {
   const [rows] = await conn.query(
@@ -37,6 +35,7 @@ async function newJobCode(db: PoolConnection): Promise<string> {
   }
 }
 
+// POST /route/optimize - คำนวณแผนจัดเส้นทางที่ดีที่สุด (ยังไม่บันทึก) ไม่ส่ง seed หรือส่ง seed ใหม่ = คำนวณใหม่
 router.post("/optimize", async (req, res) => {
   try {
     const date = req.body?.date;
@@ -50,28 +49,24 @@ router.post("/optimize", async (req, res) => {
       return;
     }
     const stops = await loadStops(date);
-    const options = STRATEGIES.map((strategy) => ({
-      strategy,
-      label: STRATEGY_LABELS[strategy],
-      ...buildPlan(stops, strategy, seed),
-    }));
-    res.json({ date, seed, options });
+    res.json({ date, seed, ...buildPlan(stops, seed) });
   } catch (error) {
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
+// POST /route/plan - ยืนยันแผนจาก seed ที่ได้จาก /route/optimize บันทึกลงฐานข้อมูล และออกเลขใบงานให้ไรเดอร์แต่ละคน
 router.post("/plan", async (req, res) => {
   let db: PoolConnection | undefined;
   try {
     const date = req.body?.date;
-    const { strategy, seed } = req.body ?? {};
+    const seed = req.body?.seed;
     if (!validDate(date)) {
       res.status(400).json({ message: "date=YYYY-MM-DD is required" });
       return;
     }
-    if (!STRATEGIES.includes(strategy) || !Number.isInteger(seed)) {
-      res.status(400).json({ message: "strategy and seed are required" });
+    if (!Number.isInteger(seed)) {
+      res.status(400).json({ message: "seed is required (integer from /route/optimize)" });
       return;
     }
     const stops = await loadStops(date);
@@ -79,7 +74,7 @@ router.post("/plan", async (req, res) => {
       res.status(400).json({ message: "No orders on this date" });
       return;
     }
-    const plan = buildPlan(stops, strategy, seed);
+    const plan = buildPlan(stops, seed);
 
     db = await conn.getConnection();
     await db.beginTransaction();
@@ -107,7 +102,7 @@ router.post("/plan", async (req, res) => {
       riders.push({ ...r, code });
     }
     await db.commit();
-    res.status(201).json({ planId, date, strategy, seed, summary: plan.summary, riders });
+    res.status(201).json({ planId, date, seed, summary: plan.summary, riders });
   } catch (error) {
     await db?.rollback();
     res.status(500).json({ error: "Internal server error" });

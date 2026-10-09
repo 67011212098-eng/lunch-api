@@ -5,6 +5,7 @@ import { DISTANCE_KM_SQL, parseNearby } from "../services/geo";
 
 export const router = express.Router();
 
+// GET /customer - ดูรายชื่อลูกค้าทั้งหมด ค้นหาด้วย ?name= (ชื่อหรือนามสกุล) ?firstname= ?lastname=
 router.get("/", async (req, res) => {
   try {
     const where: string[] = [];
@@ -25,6 +26,7 @@ router.get("/", async (req, res) => {
   }
 });
 
+// POST /customer - เพิ่มลูกค้าใหม่ (เบอร์โทรซ้ำตอบ 409)
 router.post("/", async (req, res) => {
   try {
     const c: CustomerPostRequest = req.body;
@@ -47,7 +49,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-// GET /customer/nearby?lat=16.2469&lng=103.2522
+// GET /customer/nearby - ลูกค้าในระยะ 1 กม. จากพิกัด ?lat= ?lng= (เปลี่ยนระยะด้วย ?radius=) เรียงใกล้ไปไกล
 router.get("/nearby", async (req, res) => {
   try {
     const q = parseNearby(req.query, 1);
@@ -70,10 +72,11 @@ router.get("/nearby", async (req, res) => {
   }
 });
 
+// PUT /customer/:id - แก้ไขลูกค้า ส่งเฉพาะช่องที่ต้องการแก้ได้
 router.put("/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
-     if (!Number.isInteger(id)) {
+    if (!Number.isInteger(id)) {
       res.status(400).json({ message: "id must be an integer" });
       return;
     }
@@ -102,7 +105,7 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// DELETE /customer/:id   (?force=true = ลบออร์เดอร์ของลูกค้าคนนี้ด้วย)
+// DELETE /customer/:id - ลบลูกค้า ถ้ามีออเดอร์ตอบ 409 (ใส่ ?force=true เพื่อลบออเดอร์ของคนนี้ด้วย)
 router.delete("/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);

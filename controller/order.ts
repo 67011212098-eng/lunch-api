@@ -12,7 +12,7 @@ const today = () =>
 const validBoxes = (b: unknown) => Number.isInteger(b) && (b as number) >= 1 && (b as number) <= 3;
 const validDate = (d: unknown) => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d);
 
-// GET /order/nearby?lat=16.2469&lng=103.2522
+// GET /order/nearby - ออเดอร์ทุกวันในระยะ 2 กม. จากพิกัด ?lat= ?lng= (เปลี่ยนระยะด้วย ?radius=) เรียงใกล้ไปไกล
 router.get("/nearby", async (req, res) => {
   try {
     const q = parseNearby(req.query, 2);
@@ -37,7 +37,7 @@ router.get("/nearby", async (req, res) => {
   }
 });
 
-// GET /order?date=2026-10-05  (ไม่ใส่ date = วันนี้)
+// GET /order - ออเดอร์ของวันนั้นพร้อมข้อมูลลูกค้า (?date=YYYY-MM-DD ไม่ใส่ = วันนี้)
 router.get("/", async (req, res) => {
   try {
     const date = req.query.date ? String(req.query.date) : today();
@@ -59,6 +59,7 @@ router.get("/", async (req, res) => {
   }
 });
 
+// POST /order - เพิ่มออเดอร์ (boxes 1-3 กล่อง, ไม่ใส่ date = วันนี้)
 router.post("/", async (req, res) => {
   try {
     const o: OrderPostRequest = req.body;
@@ -83,6 +84,7 @@ router.post("/", async (req, res) => {
   }
 });
 
+// PUT /order/:id - แก้จำนวนกล่อง (1-3)
 router.put("/:id", async (req, res) => {
   try {
     if (!validBoxes(req.body?.boxes)) {
@@ -104,8 +106,7 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// ใช้ล้างออเดอร์จำลองตอนทดสอบ
-// DELETE /order/simulate   (?customers=true = ลบลูกค้าจำลองด้วย)
+// DELETE /order/simulate - ล้างออเดอร์ทั้งหมด (ใส่ ?customers=true เพื่อลบลูกค้าจำลองด้วย)
 router.delete("/simulate", async (req, res) => {
   try {
     const [o] = await conn.query("DELETE FROM orders");
@@ -123,6 +124,7 @@ router.delete("/simulate", async (req, res) => {
   }
 });
 
+// DELETE /order/:id - ลบออเดอร์รายการเดียว
 router.delete("/:id", async (req, res) => {
   try {
     const [result] = await conn.query("DELETE FROM orders WHERE id = ?", [req.params.id]);
@@ -137,7 +139,7 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-// ไม่ระบุ count = สุ่ม 20-30 รายการ
+// POST /order/simulate - จำลองออเดอร์ (ไม่ใส่ count = สุ่ม 20-30 รายการ)
 router.post("/simulate", async (req, res) => {
   try {
     const date = req.body?.date ?? today();
