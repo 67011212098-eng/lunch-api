@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="th">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ลูกค้า - เส้นทางอร่อย</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="common.css">
+  <script src="auth.js" data-role="owner"></script>
+  <style>
+    #cmap {
+      height: 380px;
+      border-radius: 10px;
+      margin-top: 12px
+    }
+  </style>
+</head>
+
+<body>
+  <div id="top"></div>
+  <main>
+    <section class="card">
+      <h2 id="formTitle">เพิ่มลูกค้าใหม่ <span id="custCount" class="msg"></span></h2>
+      <div class="form">
+        <input id="cFirst" placeholder="ชื่อ"><input id="cLast" placeholder="นามสกุล"><input id="cPhone"
+          placeholder="เบอร์โทร">
+        <input id="cAddr" placeholder="ที่อยู่"><input id="cLat" placeholder="ละติจูด (lat)"><input id="cLng"
+          placeholder="ลองจิจูด (lng)">
+      </div>
+      <div class="row">
+        <button id="cSave" onclick="saveCustomer()">เพิ่มลูกค้า</button>
+        <button class="sec" onclick="resetForm()">ล้างฟอร์ม</button>
+        <input id="cSearch" placeholder="ค้นหาชื่อลูกค้า…" oninput="loadCustomers()">
+        <span class="msg">💡 คลิกบนแผนที่เพื่อกำหนดพิกัดบ้านลูกค้า</span>
+      </div>
+      <div id="cmap"></div>
+    </section>
+    <section class="card">
+      <div class="scroll" style="max-height:360px">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>ชื่อ</th>
+              <th>เบอร์โทร</th>
+              <th>ที่อยู่</th>
+              <th>พิกัด</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="common.js"></script>
+  <script>
+    renderTop("customers", false);
+    let cmap = leafletMap("cmap", [SHOP.lat, SHOP.lng], 13), layer = L.layerGroup().addTo(cmap), pick, editingId = null, list = [];
+
+    cmap.on("click", (e) => {
+      $("cLat").value = e.latlng.lat.toFixed(6); $("cLng").value = e.latlng.lng.toFixed(6);
+      if (pick) pick.remove();
+      pick = L.marker(e.latlng).addTo(cmap).bindTooltip("พิกัดที่เลือก").openTooltip();
+    });
+
+    async function loadCustomers() {
+      try {
+        const q = $("cSearch").value.trim();
+        list = await call("/customer" + (q ? "?name=" + encodeURIComponent(q) : ""));
+        $("custCount").textContent = `(${list.length} คน)`;
+        $("rows").innerHTML = list.map((c) => `<tr><td>${c.id}</td><td>${esc(c.firstname)} ${esc(c.lastname)}</td><td>${esc(c.phone)}</td><td>${esc(c.address)}</td>
+      <td>${Number(c.lat).toFixed(4)}, ${Number(c.lng).toFixed(4)}</td>
+      <td><button class="sec" onclick="focusOn(${c.id})">📍 ดูบนแผนที่</button> <button class="sec" onclick="edit(${c.id})">แก้ไข</button></td></tr>`).join("")
+          || `<tr><td colspan="6" class="msg">ไม่พบลูกค้า</td></tr>`;
+        layer.clearLayers();
+        L.marker([SHOP.lat, SHOP.lng], { icon: shopIcon() }).bindTooltip("ร้าน").addTo(layer);
+        list.forEach((c) => L.circleMarker([c.lat, c.lng], { radius: 7, color: "#fff", weight: 2, fillColor: getComputedStyle(document.documentElement).getPropertyValue("--brand").trim(), fillOpacity: 1 })
+          .bindPopup(`<b>${esc(c.firstname)} ${esc(c.lastname)}</b><br>${esc(c.phone)}<br>${esc(c.address)}`).addTo(layer));
+        if (list.length) cmap.fitBounds([[SHOP.lat, SHOP.lng], ...list.map((c) => [c.lat, c.lng])], { padding: [30, 30] });
+      } catch (e) { toast("โหลดลูกค้าไม่ได้: " + e.message); }
+    }
+    function focusOn(id) {
+      const c = list.find((x) => x.id === id); if (!c) return;
+      cmap.setView([c.lat, c.lng], 16);
+      L.popup().setLatLng([c.lat, c.lng]).setContent(`<b>${esc(c.firstname)} ${esc(c.lastname)}</b><br>${esc(c.address)}`).openOn(cmap);
+      $("cmap").scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    function edit(id) {
+      const c = list.find((x) => x.id === id); if (!c) return;
+      editingId = id;
+      $("cFirst").value = c.firstname; $("cLast").value = c.lastname; $("cPhone").value = c.phone;
+      $("cAddr").value = c.address; $("cLat").value = c.lat; $("cLng").value = c.lng;
+      $("cSave").textContent = "บันทึกการแก้ไข"; $("formTitle").firstChild.textContent = "แก้ไขลูกค้า #" + id + " ";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    function resetForm() {
+      editingId = null;
+      ["cFirst", "cLast", "cPhone", "cAddr", "cLat", "cLng"].forEach((i) => ($(i).value = ""));
+      $("cSave").textContent = "เพิ่มลูกค้า"; $("formTitle").firstChild.textContent = "เพิ่มลูกค้าใหม่ ";
+      if (pick) { pick.remove(); pick = null; }
+    }
+    async function saveCustomer() {
+      const body = { firstname: $("cFirst").value.trim(), lastname: $("cLast").value.trim(), phone: $("cPhone").value.trim(), address: $("cAddr").value.trim(), lat: Number($("cLat").value), lng: Number($("cLng").value) };
+      if (!body.firstname || !body.lastname || !body.phone || !$("cLat").value || !$("cLng").value || isNaN(body.lat) || isNaN(body.lng)) { toast("กรอกชื่อ นามสกุล เบอร์ และพิกัด (คลิกบนแผนที่) ให้ครบ"); return; }
+      try {
+        await call(editingId ? "/customer/" + editingId : "/customer", editingId ? "PUT" : "POST", body);
+        toast(editingId ? "แก้ไขลูกค้าแล้ว" : "เพิ่มลูกค้าแล้ว");
+        resetForm(); loadCustomers();
+      } catch (e) { toast(e.message); }
+    }
+    loadCustomers();
+  </script>
+</body>
+
+</html>

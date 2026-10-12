@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>เข้าสู่ระบบ - เส้นทางอร่อย</title>
+<link rel="stylesheet" href="common.css">
+<script src="auth-config.js"></script>
+<script src="auth.js"></script>
+<style>
+body{display:flex;min-height:100vh;align-items:center;justify-content:center;padding:16px}
+.box{width:100%;max-width:400px}
+.logo{text-align:center;margin-bottom:16px}
+.logo .ic{font-size:44px}
+.logo h1{margin:4px 0 2px;font-size:24px;color:var(--brand)}
+.roles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.role{border:2px solid var(--line);border-radius:12px;padding:14px 8px;text-align:center;cursor:pointer;background:#fff;font:inherit;color:var(--ink)}
+.role .ic{font-size:30px;display:block}
+.role.on{border-color:var(--brand);background:var(--brand-soft);font-weight:700}
+label{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
+.box input{width:100%;font-size:17px;padding:11px}
+#code{font-size:26px;letter-spacing:8px;text-align:center}
+.go{width:100%;margin-top:16px;padding:13px;font-size:17px;font-weight:700}
+.err{color:#c92a2a;min-height:22px;margin-top:10px;font-size:14px}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo"><span class="ic">🛵</span><h1>เส้นทางอร่อย</h1><div class="msg">ระบบจัดเส้นทางและแบ่งงานไรเดอร์</div></div>
+  <div class="card">
+    <div class="roles">
+      <button class="role on" id="rOwner" onclick="setRole('owner')"><span class="ic">🏪</span>เจ้าของร้าน</button>
+      <button class="role" id="rRider" onclick="setRole('rider')"><span class="ic">🛵</span>ไรเดอร์</button>
+    </div>
+
+    <form id="fOwner" onsubmit="loginOwner(event)">
+      <label for="user">ชื่อผู้ใช้</label>
+      <input id="user" autocomplete="username" autofocus>
+      <label for="pass">รหัสผ่าน</label>
+      <input id="pass" type="password" autocomplete="current-password">
+      <button class="go" type="submit">เข้าสู่ระบบ</button>
+    </form>
+
+    <form id="fRider" onsubmit="loginRider(event)" style="display:none">
+      <label for="code">เลขประจำตัวไรเดอร์ 6 หลัก (ที่ร้านแจ้งให้)</label>
+      <input id="code" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="off">
+      <button class="go" type="submit">เข้าสู่ระบบ</button>
+    </form>
+    <div class="err" id="err"></div>
+  </div>
+</div>
+<script src="common.js"></script>
+<script>
+const params = new URLSearchParams(location.search);
+
+// ล็อกอินอยู่แล้ว → ไปหน้าของตัวเองเลย
+const cur = Auth.session();
+if (cur) location.replace(cur.role === "owner" ? (params.get("next") || "home.html") : "rider.html");
+
+function setRole(r) {
+  $("rOwner").classList.toggle("on", r === "owner");
+  $("rRider").classList.toggle("on", r === "rider");
+  $("fOwner").style.display = r === "owner" ? "" : "none";
+  $("fRider").style.display = r === "rider" ? "" : "none";
+  $("err").textContent = "";
+  $(r === "owner" ? "user" : "code").focus();
+}
+
+function loginOwner(e) {
+  e.preventDefault();
+  const o = (window.AUTH_CONFIG || {}).owner || {};
+  if ($("user").value.trim() === o.username && $("pass").value === o.password) {
+    Auth.login("owner", { name: "เจ้าของร้าน" });
+    const next = params.get("next");
+    location.replace(next && /^[\w-]+\.html/.test(next) ? next : "home.html");
+  } else { $("err").textContent = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"; }
+}
+
+async function loginRider(e) {
+  e.preventDefault();
+  const code = $("code").value.trim();
+  if (!/^\d{6}$/.test(code)) { $("err").textContent = "เลขใบงานต้องเป็นตัวเลข 6 หลัก"; return; }
+  try {
+    const res = await call("/rider/" + code + "/current"); // ให้ backend ตรวจว่ามีไรเดอร์เลขนี้จริง
+    Auth.login("rider", { code, name: res.rider.name });
+    location.replace("rider.html");
+  } catch (er) { $("err").textContent = /not found/i.test(er.message) ? "ไม่พบเลขประจำตัวนี้ ตรวจเลขอีกครั้ง" : er.message; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>จัดการไรเดอร์ - เส้นทางอร่อย</title>
+<link rel="stylesheet" href="common.css">
+<script src="auth.js" data-role="owner"></script>
+<style>.code{font-size:20px;font-weight:700;letter-spacing:3px;font-variant-numeric:tabular-nums}</style>
+</head>
+<body>
+<div id="top"></div>
+<main>
+  <section class="card">
+    <h2>ไรเดอร์ของร้าน <span id="cnt" class="msg"></span></h2>
+    <p class="msg" style="margin-top:-4px">แต่ละคนมี <b>เลขประจำตัว 6 หลักคงที่</b> ใช้ล็อกอินที่แท็บ "ไรเดอร์" ครั้งเดียวทั้งวัน งานรอบใหม่จะขึ้นให้เองเมื่อร้านยืนยันแผน</p>
+    <div class="row" style="margin-bottom:12px">
+      <input id="name" placeholder="ชื่อไรเดอร์ใหม่" style="min-width:220px" onkeydown="if(event.key==='Enter')addRider()">
+      <button onclick="addRider()">➕ เพิ่มไรเดอร์</button>
+    </div>
+    <div class="scroll" style="max-height:520px"><table>
+      <thead><tr><th>#</th><th>ชื่อ</th><th>เลขประจำตัว</th><th></th></tr></thead>
+      <tbody id="rows"></tbody></table></div>
+  </section>
+</main>
+<script src="common.js"></script>
+<script>
+renderTop("riders", false);
+let list = [];
+async function load() {
+  try {
+    list = await call("/rider");
+    $("cnt").textContent = `(${list.length} คน)`;
+    $("rows").innerHTML = list.map((r) => `<tr><td>${r.id}</td>
+      <td><input value="${esc(r.name)}" onchange="rename(${r.id}, this.value)" style="width:100%;min-width:140px"></td>
+      <td class="code">${esc(r.code)}</td>
+      <td><button class="sec" onclick="copyCode('${esc(r.code)}', '${esc(r.name)}')">📋 คัดลอก</button>
+          <button class="sec" onclick="regen(${r.id})">🔄 เปลี่ยนเลข</button>
+          <button class="sec" onclick="del(${r.id})">🗑️ ลบ</button></td></tr>`).join("")
+      || `<tr><td colspan="4" class="msg">ยังไม่มีไรเดอร์ — เพิ่มด้านบน</td></tr>`;
+  } catch (e) { toast("โหลดไรเดอร์ไม่ได้: " + e.message); }
+}
+async function addRider() {
+  const name = $("name").value.trim();
+  if (!name) { toast("ใส่ชื่อไรเดอร์ก่อน"); return; }
+  try { await call("/rider", "POST", { name }); $("name").value = ""; toast("เพิ่มไรเดอร์แล้ว"); load(); } catch (e) { toast(e.message); }
+}
+async function rename(id, name) {
+  try { await call("/rider/" + id, "PUT", { name }); toast("แก้ชื่อแล้ว"); load(); } catch (e) { toast(e.message); }
+}
+async function regen(id) {
+  if (!confirm("เปลี่ยนเลขประจำตัวไรเดอร์คนนี้? เลขเก่าจะใช้ล็อกอินไม่ได้อีก")) return;
+  try { await call("/rider/" + id, "PUT", { regenerate: true }); toast("เปลี่ยนเลขแล้ว"); load(); } catch (e) { toast(e.message); }
+}
+async function del(id) {
+  if (!confirm("ลบไรเดอร์คนนี้?")) return;
+  try { await call("/rider/" + id, "DELETE"); load(); } catch (e) { toast(e.message); }
+}
+async function copyCode(code, name) {
+  const text = `เลขประจำตัวของ${name}: ${code}\nล็อกอินที่หน้าไรเดอร์: ${location.origin}/login.html`;
+  try { await navigator.clipboard.writeText(text); toast("คัดลอกข้อความแล้ว ส่งให้ไรเดอร์ได้เลย"); } catch { toast(text); }
+}
+load();
+</script>
+</body>
+</html>
