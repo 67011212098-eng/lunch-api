@@ -512,22 +512,22 @@ header button.back {
       <p class="msg">เลือกเมนูที่ต้องการใช้งาน</p>
     </div>
     <div class="menu">
-      <a class="tile" href="#/customers">
+      <a class="tile" href="/customer">
         <div class="ic">👥</div>
         <h3>ลูกค้า</h3>
         <p>จัดการชื่อ เบอร์โทร และพิกัดบ้านลูกค้า ดูตำแหน่งบนแผนที่</p><b id="sCust">&nbsp;</b>
       </a>
-      <a class="tile" href="#/orders">
+      <a class="tile" href="/order">
         <div class="ic">📦</div>
         <h3>ออเดอร์</h3>
         <p>เพิ่ม ลบ แก้จำนวนกล่อง หรือสุ่มออเดอร์เพื่อทดสอบระบบ</p><b id="sOrder">&nbsp;</b>
       </a>
-      <a class="tile" href="#/gps">
+      <a class="tile" href="/route/optimize">
         <div class="ic">🗺️</div>
         <h3>จัดเส้นทางจัดส่ง</h3>
         <p>ให้ระบบแบ่งงานไรเดอร์ ดูเส้นทางบนแผนที่ และสรุปกำไร/ขาดทุน</p><b>เริ่มจัดเส้นทาง </b>
       </a>
-      <a class="tile" href="#/rider">
+      <a class="tile" href="#" onclick="openJobPrompt();return false">
         <div class="ic">🛵</div>
         <h3>หน้าจอไรเดอร์</h3>
         <p>ไรเดอร์กรอกเลขใบงานเพื่อดูลำดับจุดส่งและเปิดแผนที่นำทาง</p><b>เปิดหน้าไรเดอร์ </b>
@@ -712,7 +712,7 @@ const Auth = (function () {
   return {
     session: get,
     login(role, extra) { localStorage.setItem(KEY, JSON.stringify({ role, ...extra, exp: Date.now() + TTL })); },
-    logout() { try { localStorage.removeItem(KEY); } catch {} location.replace("#/login"); },
+    logout() { try { localStorage.removeItem(KEY); } catch {} location.assign("/"); },
   };
 })();
 
@@ -760,13 +760,21 @@ async function checkServer() {
   } catch { if (el.isConnected) el.textContent = "🔴 ติดต่อเซิร์ฟเวอร์ไม่ได้"; }
 }
 
+// ลิงก์ของแต่ละหน้า = ชื่อเส้นตามคู่มือ (เซิร์ฟเวอร์ส่งหน้าเว็บนี้ให้เบราว์เซอร์ที่เปิดลิงก์เหล่านั้น)
 const PAGES = [
-  ["home", "#/home", "🏠 หน้าหลัก"],
-  ["customers", "#/customers", "👥 ลูกค้า"],
-  ["orders", "#/orders", "📦 ออเดอร์"],
-  ["gps", "#/gps", "🗺️ จัดเส้นทางจัดส่ง"],
-  ["rider", "#/rider", "🛵 หน้าจอไรเดอร์"],
+  ["home", "/", "🏠 หน้าหลัก"],
+  ["customers", "/customer", "👥 ลูกค้า"],
+  ["orders", "/order", "📦 ออเดอร์"],
+  ["gps", "/route/optimize", "🗺️ จัดเส้นทางจัดส่ง"],
+  ["rider", "#", "🛵 หน้าจอไรเดอร์"],
 ];
+
+// หน้าใบงานไรเดอร์ = /job/เลข 6 หลัก จึงถามเลขใบงานก่อนเปิด
+function openJobPrompt() {
+  const c = (prompt("กรอกเลขใบงาน 6 หลัก") || "").trim();
+  if (/^\d{6}$/.test(c)) location.assign("/job/" + c);
+  else if (c) toast("เลขใบงานต้องเป็นตัวเลข 6 หลัก");
+}
 
 // วาดหัวเว็บ + เมนูลงใน <div id="top">; withDate = มีช่องเลือกวันที่ (เปลี่ยนวันแล้วเรียก onDateChange)
 function renderTop(active, withDate) {
@@ -777,7 +785,7 @@ function renderTop(active, withDate) {
       <span id="srv" style="font-size:12px;opacity:.9" title="ตรวจด้วย GET /">⏳ ตรวจเซิร์ฟเวอร์…</span>
       ${Auth.session() ? `<span style="font-size:13px;opacity:.9">${Auth.session().role === "owner" ? "🏪 เจ้าของร้าน" : "🛵 " + esc(Auth.session().name || "ไรเดอร์")}</span><button class="back" onclick="Auth.logout()">ออกจากระบบ</button>` : ""}
     </header>
-    ${active === "rider" ? "" : `<nav>${PAGES.map(([k, href, label]) => `<a href="${href}" class="${k === active ? "on" : ""}">${label}</a>`).join("")}</nav>`}`;
+    ${active === "rider" ? "" : `<nav>${PAGES.map(([k, href, label]) => `<a href="${href}" class="${k === active ? "on" : ""}"${k === "rider" ? ` onclick="openJobPrompt();return false"` : ""}>${label}</a>`).join("")}</nav>`}`;
   checkServer();
   if (withDate) {
     let d = today();
@@ -801,12 +809,7 @@ const shopIcon = () => L.divIcon({ className: "", html: `<div class="pin" style=
 /* ======================= หน้า: login ======================= */
 function mount_login() {
 
-const params = hashParams();
 checkServer();
-
-// ล็อกอินอยู่แล้ว → ไปหน้าของตัวเองเลย
-const cur = Auth.session();
-if (cur) { go(cur.role === "owner" ? (params.get("next") || "home") : "rider"); return; }
 
 function setRole(r) {
   $("rOwner").classList.toggle("on", r === "owner");
@@ -822,8 +825,7 @@ function loginOwner(e) {
   const o = (window.AUTH_CONFIG || {}).owner || {};
   if ($("user").value.trim() === o.username && $("pass").value === o.password) {
     Auth.login("owner", { name: "เจ้าของร้าน" });
-    const next = params.get("next");
-    go(next && /^[\w-]+$/.test(next) ? next : "home");
+    route(); // ล็อกอินแล้วแสดงหน้าตาม URL เดิมที่เปิดมา
   } else { $("err").textContent = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"; }
 }
 
@@ -834,7 +836,7 @@ async function loginRider(e) {
   try {
     const job = await call("/job/" + code); // ให้ backend ตรวจว่ามีเลขใบงานนี้จริง
     Auth.login("rider", { code, name: "ไรเดอร์คนที่ " + job.riderNo });
-    go("rider");
+    location.assign("/job/" + code);
   } catch (er) { $("err").textContent = /not found/i.test(er.message) ? "ไม่พบเลขใบงานนี้ ตรวจเลขอีกครั้ง" : er.message; }
 }
 Object.assign(window, { setRole, loginOwner, loginRider });
@@ -860,7 +862,7 @@ function mount_home() {
 function mount_customers() {
 
     renderTop("customers", false);
-    let cmap = leafletMap("cmap", [SHOP.lat, SHOP.lng], 13), layer = L.layerGroup().addTo(cmap), pick, editingId = null, list = [], nearby = null;
+    let cmap = leafletMap("cmap", [SHOP.lat, SHOP.lng], 13), layer = L.layerGroup().addTo(cmap), pick, editingId = null, list = [], nearby = null, urlFilter = null;
 
     cmap.on("click", (e) => {
       $("cLat").value = e.latlng.lat.toFixed(6); $("cLng").value = e.latlng.lng.toFixed(6);
@@ -872,7 +874,8 @@ function mount_customers() {
       try {
         const q = $("cSearch").value.trim();
         if (q && nearby) { nearby = null; $("cNearClear").style.display = "none"; }
-        list = await call(nearby ? `/customer/nearby?lat=${nearby.lat}&lng=${nearby.lng}&radius=${nearby.radius}` : "/customer" + (q ? "?name=" + encodeURIComponent(q) : ""));
+        const byUrl = !q && !nearby ? urlFilter : null; urlFilter = null;
+        list = await call(nearby ? `/customer/nearby?lat=${nearby.lat}&lng=${nearby.lng}&radius=${nearby.radius}` : "/customer" + (q ? "?name=" + encodeURIComponent(q) : byUrl ? "?" + byUrl : ""));
         $("custCount").textContent = nearby ? `(ในรัศมี ${nearby.radius} กม. พบ ${list.length} คน)` : `(${list.length} คน)`;
         $("rows").innerHTML = list.map((c) => `<tr><td>${c.id}</td><td>${esc(c.firstname)} ${esc(c.lastname)}</td><td>${esc(c.phone)}</td><td>${esc(c.address)}</td>
       <td>${Number(c.lat).toFixed(4)}, ${Number(c.lng).toFixed(4)}${c.distance_km !== undefined ? ` · ห่าง ${c.distance_km} กม.` : ""}</td>
@@ -941,7 +944,19 @@ function mount_customers() {
         resetForm(); loadCustomers();
       } catch (e) { toast(e.message); }
     }
-    loadCustomers();
+    // เปิดจากลิงก์ตามคู่มือ: /customer?name=… /customer?firstname=…&lastname=… /customer/nearby?lat=…&lng=… /customer/:id
+    const U = qs();
+    if (PAGE.nearby) {
+      for (const [k, id] of [["lat", "cLat"], ["lng", "cLng"], ["radius", "cRadius"]]) if (U.get(k)) $(id).value = U.get(k);
+      nearbyCustomers();
+    } else {
+      if (U.get("name")) $("cSearch").value = U.get("name");
+      else if (U.get("firstname") || U.get("lastname")) urlFilter = "firstname=" + encodeURIComponent(U.get("firstname") || "") + "&lastname=" + encodeURIComponent(U.get("lastname") || "");
+      loadCustomers().then(() => {
+        if (!PAGE.id) return;
+        if (list.some((c) => c.id === PAGE.id)) { edit(PAGE.id); focusOn(PAGE.id); } else toast("ไม่พบลูกค้า id " + PAGE.id);
+      });
+    }
 Object.assign(window, { saveCustomer, resetForm, loadCustomers, nearbyCustomers, clearNearby, focusOn, edit, del });
 return () => { cmap.remove(); };
 }
@@ -1009,7 +1024,26 @@ function mount_orders() {
           || `<tr><td colspan="7" class="msg">ไม่มีออเดอร์ในรัศมีนี้</td></tr>`;
       } catch (e) { toast(e.message); }
     }
-    loadOrders();
+    // เปิดจากลิงก์ตามคู่มือ: /order?date=… /order/nearby?lat=…&lng=… /order/simulate /order/:id
+    (async () => {
+      const U = qs();
+      if (PAGE.id) {
+        try {
+          const o = (await call(`/order/nearby?lat=${SHOP.lat}&lng=${SHOP.lng}&radius=1000`)).find((x) => x.id === PAGE.id);
+          if (o) { $("date").value = o.order_date; try { sessionStorage.setItem("date", o.order_date); } catch { } } else toast("ไม่พบออเดอร์ id " + PAGE.id);
+        } catch (e) { toast(e.message); }
+      }
+      await loadOrders();
+      if (PAGE.id) {
+        const row = [...document.querySelectorAll("#rows tr")].find((tr) => tr.firstElementChild.textContent.trim() === String(PAGE.id));
+        if (row) { row.style.background = "var(--brand-soft)"; row.scrollIntoView({ block: "center" }); }
+      }
+      if (PAGE.nearby) {
+        for (const [k, id] of [["lat", "nLat"], ["lng", "nLng"], ["radius", "nRadius"]]) if (U.get(k)) $(id).value = U.get(k);
+        await nearbyOrders(); $("nearCount").scrollIntoView({ block: "center" });
+      }
+      if (PAGE.simulate) $("simCount").focus();
+    })();
 Object.assign(window, { addOrder, simulate, clearOrders, nearbyOrders, useCustomerPoint, editBoxes, delOrder });
 
 }
@@ -1290,7 +1324,7 @@ async function deleteDayPlans() {
       $("confirmed").style.display = "";
       $("jobs").innerHTML = `<p class="msg">แผน #${r.planId} · ${r.summary.riders} ไรเดอร์ · กำไร ${money(r.summary.profit)}</p>` +
         `<table><thead><tr><th>ไรเดอร์</th><th>เลขใบงาน</th><th class="n">กล่อง</th><th class="n">เสร็จ</th></tr></thead><tbody>${r.riders.map((x) =>
-          `<tr><td><span class="dot" style="background:${x.color}"></span>คนที่ ${x.riderNo}</td><td><b style="font-size:18px;letter-spacing:2px">${esc(x.code)}</b></td><td class="n">${x.boxes}</td><td class="n">${x.finishTime}</td></tr>`).join("")}</tbody></table>`;
+          `<tr><td><span class="dot" style="background:${x.color}"></span>คนที่ ${x.riderNo}</td><td><a href="/job/${esc(x.code)}" target="_blank" rel="noopener" title="เปิดใบงานของไรเดอร์คนนี้"><b style="font-size:18px;letter-spacing:2px">${esc(x.code)}</b></a></td><td class="n">${x.boxes}</td><td class="n">${x.finishTime}</td></tr>`).join("")}</tbody></table>`;
     }
     // กด "ยืนยันแผนนี้" → บันทึกแผนและออกเลขใบงาน 6 หลักให้ไรเดอร์แต่ละคน
     async function confirmPlan() {
@@ -1304,6 +1338,7 @@ async function deleteDayPlans() {
     }
 
     loadOrders().then(restoreState);
+    if (PAGE.planId) toast("แผน #" + PAGE.planId + " ลบได้ด้วยปุ่ม \"ส่งเสร็จแล้ว / ล้างแผน\" หลังยืนยันแผน (ใบงานเปิดที่ /job/เลขใบงาน)");
 Object.assign(window, { optimize, openMap, clearPlan, deleteDayPlans, closeMap, reoptimizeNoLoss, confirmPlan });
 return () => { document.removeEventListener("keydown", onEsc); if (map) map.remove(); };
 }
@@ -1313,17 +1348,17 @@ function mount_rider() {
 
 renderTop("rider", false);
 
-// ไรเดอร์: ใช้เลขใบงานจากตอนล็อกอินเท่านั้น (ดูงานคนอื่นไม่ได้) / เจ้าของร้าน: กรอกเลขหรือใส่ ?code= เพื่อดูแทนได้
+// เปิดที่ /job/เลขใบงาน (ลิงก์ตามคู่มือ) ใครมีเลขก็ดูใบงานนั้นได้
 const S = Auth.session();
 const isRider = S && S.role === "rider";
-let current = isRider ? S.code : hashParams().get("code");
+let current = PAGE.code;
 let lastJson = "";
 
 function loadFromInput() {
   const c = $("code").value.trim();
   $("err").textContent = "";
   if (!/^\d{6}$/.test(c)) { $("err").textContent = "เลขต้องเป็นตัวเลข 6 หลัก"; return; }
-  current = c; lastJson = ""; refresh(true);
+  location.assign("/job/" + c);
 }
 
 async function refresh(manual) {
@@ -1335,11 +1370,12 @@ async function refresh(manual) {
     lastJson = json;
     $("login").style.display = "none";
     show(j);
-    if (!isRider) history.replaceState(null, "", "#/rider?code=" + current);
   } catch (e) {
     if (/not found/i.test(e.message)) {
-      if (isRider) { $("login").style.display = "none"; $("job").innerHTML = `<div class="card wait"><div class="ic">⚠️</div><p>เลขใบงานนี้ใช้ไม่ได้แล้ว (แผนอาจถูกยกเลิก)<br>ติดต่อร้านเพื่อขอเลขใหม่</p><button class="b" onclick="Auth.logout()">ออกจากระบบ</button></div>`; }
-      else { $("login").style.display = ""; $("err").textContent = "ไม่พบเลขใบงานนี้ ตรวจเลขอีกครั้ง"; }
+      $("login").style.display = "none";
+      $("job").innerHTML = `<div class="card wait"><div class="ic">⚠️</div><p>เลขใบงานนี้ใช้ไม่ได้ (ไม่มีเลขนี้ หรือแผนถูกยกเลิกแล้ว)<br>ติดต่อร้านเพื่อขอเลขใหม่</p><a class="b" href="/" onclick="${isRider ? "Auth.logout();return false" : ""}">${isRider ? "ออกจากระบบ" : "กลับหน้าแรก"}</a></div>`;
+    } else if (/6 digits/i.test(e.message)) {
+      $("login").style.display = ""; $("err").textContent = "เลขใบงานต้องเป็นตัวเลข 6 หลัก";
     } else if (manual) { $("err").textContent = e.message; }
   }
 }
@@ -1367,11 +1403,11 @@ function show(j) {
         </div>
       </div>`).join("")}
     <p class="msg" style="text-align:center">รวมระยะทาง ${j.km} กม. · คาดว่าเสร็จ ${esc(j.finishTime)}</p>
-    ${isRider ? "" : `<a class="b sec" href="#/rider">ใส่เลขใบงานอื่น</a>`}`;
+    ${isRider ? "" : `<a class="b sec" href="#" onclick="openJobPrompt();return false">ใส่เลขใบงานอื่น</a>`}`;
 }
 
 $("code").addEventListener("keydown", (e) => e.key === "Enter" && loadFromInput());
-if (isRider) $("login").style.display = "none";
+$("login").style.display = "none";
 refresh(true);
 const timer = setInterval(refresh, 15000); // เช็กทุก 15 วินาที ถ้าร้านลบแผนจะขึ้นว่าเลขใบงานใช้ไม่ได้แล้ว
 Object.assign(window, { loadFromInput });
@@ -1379,37 +1415,55 @@ return () => { clearInterval(timer); };
 }
 
 
-/* ---------- หน้าเดียว: เปลี่ยนหน้าด้วย #/ชื่อหน้า ไม่มีเส้นทางอื่นนอกจาก API ---------- */
-const hashParams = () => new URLSearchParams(location.hash.split("?")[1] || "");
-const go = (name, qs) => { location.hash = "#/" + name + (qs ? "?" + qs : ""); };
-const goReplace = (name, qs) => location.replace("#/" + name + (qs ? "?" + qs : ""));
+/* ---------- หน้าเว็บอยู่ที่ชื่อเส้นเดียวกับในคู่มือ (เซิร์ฟเวอร์ส่งไฟล์นี้ให้เบราว์เซอร์ที่เปิดลิงก์เหล่านั้น) ---------- */
+const qs = () => new URLSearchParams(location.search);
 
 const VIEWS = {
-  login: { role: null, title: "เข้าสู่ระบบ - เส้นทางอร่อย", mount: mount_login },
-  home: { role: "owner", title: "หน้าหลัก - เส้นทางอร่อย", mount: mount_home },
-  customers: { role: "owner", title: "ลูกค้า - เส้นทางอร่อย", mount: mount_customers },
-  orders: { role: "owner", title: "ออเดอร์ - เส้นทางอร่อย", mount: mount_orders },
-  gps: { role: "owner", title: "เส้นทางอร่อย - จัดเส้นทางจัดส่ง", mount: mount_gps },
-  rider: { role: "any", title: "ใบงานไรเดอร์ - เส้นทางอร่อย", mount: mount_rider },
+  login: { title: "เข้าสู่ระบบ - เส้นทางอร่อย", mount: mount_login },
+  home: { title: "หน้าหลัก - เส้นทางอร่อย", mount: mount_home },
+  customers: { title: "ลูกค้า - เส้นทางอร่อย", mount: mount_customers },
+  orders: { title: "ออเดอร์ - เส้นทางอร่อย", mount: mount_orders },
+  gps: { title: "เส้นทางอร่อย - จัดเส้นทางจัดส่ง", mount: mount_gps },
+  rider: { title: "ใบงานไรเดอร์ - เส้นทางอร่อย", mount: mount_rider },
 };
-let cleanup = null;
+
+// ชื่อเส้นในคู่มือ -> หน้าที่แสดง
+function parsePath() {
+  const p = location.pathname.replace(/\/+$/, "") || "/";
+  let m;
+  if (p === "/customer") return { name: "customers" };
+  if (p === "/customer/nearby") return { name: "customers", nearby: true };
+  if ((m = p.match(/^\/customer\/(\d+)$/))) return { name: "customers", id: Number(m[1]) };
+  if (p === "/order") return { name: "orders" };
+  if (p === "/order/nearby") return { name: "orders", nearby: true };
+  if (p === "/order/simulate") return { name: "orders", simulate: true };
+  if ((m = p.match(/^\/order\/(\d+)$/))) return { name: "orders", id: Number(m[1]) };
+  if (p === "/route/optimize" || p === "/route/plan") return { name: "gps" };
+  if ((m = p.match(/^\/route\/plan\/(\d+)$/))) return { name: "gps", planId: Number(m[1]) };
+  if ((m = p.match(/^\/job\/([^/]+)$/))) return { name: "rider", code: m[1] };
+  return { name: "home" };
+}
+
+let PAGE = {}, cleanup = null;
 function route() {
   if (cleanup) { try { cleanup(); } catch {} cleanup = null; }
   window.onDateChange = null;
-  const name = (location.hash.match(/^#\/(\w+)/) || [])[1] || "login";
-  const view = VIEWS[name];
-  if (!view) { goReplace("login"); return; }
+  PAGE = parsePath();
   const a = Auth.session();
-  if (view.role && !a) { goReplace("login", "next=" + encodeURIComponent(name)); return; }
-  if (view.role === "owner" && a.role !== "owner") { goReplace("rider"); return; }
-  document.title = view.title;
+  let name = PAGE.name;
+  if (name !== "rider") {
+    if (!a) name = "login"; // ยังไม่ล็อกอิน: แสดงหน้าล็อกอินที่ URL เดิม ล็อกอินแล้วจะเห็นหน้าตาม URL นั้น
+    else if (a.role !== "owner") { location.replace("/job/" + a.code); return; }
+  }
+  const d = qs().get("date");
+  if (d && /^\d{4}-\d{2}-\d{2}$/.test(d) && (name === "orders" || name === "gps")) { try { sessionStorage.setItem("date", d); } catch { } }
+  document.title = VIEWS[name].title;
   $("top").innerHTML = "";
   $("view").className = "v-" + name;
   $("view").innerHTML = document.getElementById("tpl-" + name).innerHTML;
-  cleanup = view.mount() || null;
+  cleanup = VIEWS[name].mount() || null;
   window.scrollTo(0, 0);
 }
-window.addEventListener("hashchange", route);
 route();
 
 </script>
