@@ -501,6 +501,7 @@ header button.back {
     </form>
     <div class="err" id="err"></div>
   </div>
+  <div class="msg" id="srv" style="text-align:center;margin-top:12px">⏳ ตรวจเซิร์ฟเวอร์…</div>
 </div>
 </template>
 
@@ -748,6 +749,17 @@ async function call(path, method = "GET", body) {
   return j;
 }
 
+// GET / เช็กว่าเซิร์ฟเวอร์ทำงานอยู่ (ขอเป็นข้อความธรรมดา จะได้ "Get in index.ts" ตามคู่มือ)
+async function checkServer() {
+  const el = document.getElementById("srv");
+  if (!el) return;
+  try {
+    const r = await fetch(API + "/", { headers: { Accept: "text/plain" } });
+    const t = await r.text();
+    if (el.isConnected) el.textContent = r.ok && t.includes("Get in index.ts") ? "🟢 เซิร์ฟเวอร์ทำงานอยู่" : "🟠 เซิร์ฟเวอร์ตอบผิดปกติ";
+  } catch { if (el.isConnected) el.textContent = "🔴 ติดต่อเซิร์ฟเวอร์ไม่ได้"; }
+}
+
 const PAGES = [
   ["home", "#/home", "🏠 หน้าหลัก"],
   ["customers", "#/customers", "👥 ลูกค้า"],
@@ -762,9 +774,11 @@ function renderTop(active, withDate) {
     <header>
       <h1>🛵 เส้นทางอร่อย <small style="font-weight:400;font-size:13px;opacity:.9">· ระบบจัดเส้นทางและแบ่งงานไรเดอร์</small></h1>
       ${withDate ? `<label>วันที่ <input id="date" type="date"></label>` : ""}
+      <span id="srv" style="font-size:12px;opacity:.9" title="ตรวจด้วย GET /">⏳ ตรวจเซิร์ฟเวอร์…</span>
       ${Auth.session() ? `<span style="font-size:13px;opacity:.9">${Auth.session().role === "owner" ? "🏪 เจ้าของร้าน" : "🛵 " + esc(Auth.session().name || "ไรเดอร์")}</span><button class="back" onclick="Auth.logout()">ออกจากระบบ</button>` : ""}
     </header>
     ${active === "rider" ? "" : `<nav>${PAGES.map(([k, href, label]) => `<a href="${href}" class="${k === active ? "on" : ""}">${label}</a>`).join("")}</nav>`}`;
+  checkServer();
   if (withDate) {
     let d = today();
     try { d = sessionStorage.getItem("date") || d; } catch { }
@@ -788,6 +802,7 @@ const shopIcon = () => L.divIcon({ className: "", html: `<div class="pin" style=
 function mount_login() {
 
 const params = hashParams();
+checkServer();
 
 // ล็อกอินอยู่แล้ว → ไปหน้าของตัวเองเลย
 const cur = Auth.session();
