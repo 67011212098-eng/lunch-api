@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import path from "path";
 import { router as index } from "./controller/index";
 import { router as customer } from "./controller/customer";
 import { router as order } from "./controller/order";
@@ -19,6 +20,7 @@ app.use(
 app.use(express.text());
 app.use(express.json());
 
+app.use(express.static(path.join(process.cwd(), "frontend")));
 app.use("/", index);
 app.use("/customer", customer);
 app.use("/order", order);
