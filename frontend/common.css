@@ -223,14 +223,3 @@ header button.back {
     border: 1px solid rgba(255, 255, 255, .6);
     padding: 6px 12px
 }
-
-/* ---------- ธีมสี (สลับได้จากเมนู 🎨 ที่หัวเว็บ) ---------- */
-:root[data-theme="orange"]  { --brand: #e8590c; --brand-soft: #fff4ec; --bg: #f6f4ef; --line: #e5e0d6 }
-:root[data-theme="mustard"] { --brand: #d97706; --brand-soft: #fff6e0; --bg: #fffbea; --line: #f0e4c0 }
-:root[data-theme="coffee"]  { --brand: #8d5524; --brand-soft: #f6ece2; --bg: #faf5ee; --line: #e6d9c8 }
-:root[data-theme="green"]   { --brand: #2b8a3e; --brand-soft: #e6f4ea; --bg: #f4f9f4; --line: #d5e6d8 }
-:root[data-theme="anchan"] { --brand: #6d3fc0; --brand-soft: #f1ebfb; --bg: #f8f5fd; --line: #e3d9f3 }
-:root[data-theme="peach"]  { --brand: #db5a7a; --brand-soft: #fde8ed; --bg: #fff7f8; --line: #f4dde2 }
-:root[data-theme="navy"]   { --brand: #1e3a5f; --brand-soft: #e6edf6; --bg: #f4f6fa; --line: #d9e0ea }
-header select.theme { background: rgba(255,255,255,.2); color: #fff; border: 1px solid rgba(255,255,255,.6); padding: 5px 8px; border-radius: 8px }
-header select.theme option { color: #222 }

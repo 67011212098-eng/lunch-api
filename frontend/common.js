@@ -40,18 +40,11 @@ const PAGES = [
 ];
 
 // วาดหัวเว็บ + เมนูลงใน <div id="top">; withDate = มีช่องเลือกวันที่ (เปลี่ยนวันแล้วเรียก onDateChange)
-const THEMES = [["teal", "เขียวมิ้นต์"], ["orange", "ส้มอบอุ่น"], ["mustard", "มัสตาร์ดทอง"], ["coffee", "น้ำตาลกาแฟ"], ["green", "เขียวสมุนไพร"], ["anchan", "ม่วงอัญชัน"], ["peach", "ชมพูพีช"], ["navy", "กรมท่า"]]; // ตัวแรก = ธีมเริ่มต้น
-function setTheme(t) {
-  if (t === "teal") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
-  try { t === "teal" ? localStorage.removeItem("theme") : localStorage.setItem("theme", t); } catch {}
-}
-
 function renderTop(active, withDate) {
   $("top").innerHTML = `
     <header>
       <h1>🛵 เส้นทางอร่อย <small style="font-weight:400;font-size:13px;opacity:.9">· ระบบจัดเส้นทางและแบ่งงานไรเดอร์</small></h1>
       ${withDate ? `<label>วันที่ <input id="date" type="date"></label>` : ""}
-      <select class="theme" title="เปลี่ยนธีมสี" onchange="setTheme(this.value)">${THEMES.map(([k, n]) => `<option value="${k}" ${k === (document.documentElement.dataset.theme || "teal") ? "selected" : ""}>🎨 ${n}</option>`).join("")}</select>
       ${Auth.session() ? `<span style="font-size:13px;opacity:.9">${Auth.session().role === "owner" ? "🏪 เจ้าของร้าน" : "🛵 " + esc(Auth.session().name || "ไรเดอร์")}</span><button class="back" onclick="Auth.logout()">ออกจากระบบ</button>` : ""}
     </header>
     ${active === "rider" ? "" : `<nav>${PAGES.map(([k, href, label]) => `<a href="${href}" class="${k === active ? "on" : ""}">${label}</a>`).join("")}</nav>`}`;

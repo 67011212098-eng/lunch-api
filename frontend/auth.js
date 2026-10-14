@@ -2,7 +2,6 @@
 // ใส่ใน <head> ของแต่ละหน้า: <script src="auth.js" data-role="owner"></script>
 //   data-role="owner" = เฉพาะเจ้าของร้าน, data-role="any" = ล็อกอินแล้วเป็นใครก็ได้, ไม่ใส่ = ไม่ตรวจ (หน้าล็อกอิน)
 (function () {
-  try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
   const KEY = "auth", TTL = 12 * 60 * 60 * 1000; // อยู่ในระบบ 12 ชั่วโมง
   const get = () => {
     try { const a = JSON.parse(localStorage.getItem(KEY)); if (a && a.exp > Date.now()) return a; } catch {}
