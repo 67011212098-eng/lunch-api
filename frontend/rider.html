@@ -13,7 +13,6 @@ h2.t{font-size:18px;margin:18px 0 8px}
 #code{width:100%;font-size:26px;letter-spacing:8px;text-align:center;padding:12px;border:2px solid var(--line);border-radius:10px}
 .b{display:block;width:100%;text-align:center;text-decoration:none;font:inherit;font-weight:700;padding:14px;border:0;border-radius:12px;background:var(--brand);color:#fff;margin-top:10px;cursor:pointer}
 .b.sec{background:#fff;color:var(--brand);border:2px solid var(--brand)}
-.b.ok{background:#2f9e44}
 .err{color:#c92a2a;margin-top:8px}
 .head{color:#fff;border-radius:14px;padding:14px;margin-bottom:12px}
 .head b{font-size:22px}
@@ -22,15 +21,11 @@ h2.t{font-size:18px;margin:18px 0 8px}
 .sum span{display:block;font-size:13px;color:var(--mute)}
 .sum b{font-size:22px}
 .stop{display:flex;gap:12px;margin-bottom:12px}
-.stop.done{opacity:.7;background:#f1faf3;border-color:#b2dfb9}
 .num{flex:none;width:38px;height:38px;border-radius:50%;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center}
 .stop h3{margin:0 0 2px;font-size:18px}
 .stop p{margin:2px 0;color:var(--mute);font-size:15px}
 .stop .b{padding:10px;margin-top:8px;font-size:16px}
 .tag{display:inline-block;background:var(--brand-soft);color:var(--brand);border-radius:8px;padding:2px 8px;font-size:14px;font-weight:700}
-.okmsg{color:#2f9e44;font-weight:700;margin-top:8px}
-.prog{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center;margin:12px 0}
-.bar{height:8px;background:#eee;border-radius:6px;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:#2f9e44}
 .wait{text-align:center;padding:30px 10px}.wait .ic{font-size:48px}
 </style>
 </head>
@@ -38,7 +33,7 @@ h2.t{font-size:18px;margin:18px 0 8px}
 <div id="top"></div>
 <div class="wrap">
   <div class="card" id="login">
-    <label>กรอกเลขประจำตัวไรเดอร์ 6 หลัก</label>
+    <label>กรอกเลขใบงาน 6 หลัก</label>
     <input id="code" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="off">
     <button class="b" onclick="loadFromInput()">ดูใบงาน</button>
     <div class="err" id="err"></div>
@@ -49,7 +44,7 @@ h2.t{font-size:18px;margin:18px 0 8px}
 <script>
 renderTop("rider", false);
 
-// ไรเดอร์: ใช้เลขประจำตัวจากตอนล็อกอินเท่านั้น (ดูงานคนอื่นไม่ได้) / เจ้าของร้าน: กรอกเลขหรือใส่ ?code= เพื่อดูแทนได้
+// ไรเดอร์: ใช้เลขใบงานจากตอนล็อกอินเท่านั้น (ดูงานคนอื่นไม่ได้) / เจ้าของร้าน: กรอกเลขหรือใส่ ?code= เพื่อดูแทนได้
 const S = Auth.session();
 const isRider = S && S.role === "rider";
 let current = isRider ? S.code : new URLSearchParams(location.search).get("code");
@@ -65,32 +60,24 @@ function loadFromInput() {
 async function refresh(manual) {
   if (!current) return;
   try {
-    const res = await call("/rider/" + current + "/current");
-    const json = JSON.stringify(res);
+    const j = await call("/job/" + current);
+    const json = JSON.stringify(j);
     if (json === lastJson) return; // ไม่มีอะไรเปลี่ยน ไม่ต้องวาดใหม่
     lastJson = json;
     $("login").style.display = "none";
-    res.job ? show(res) : showWaiting(res);
+    show(j);
     if (!isRider) history.replaceState(null, "", "?code=" + current);
   } catch (e) {
     if (/not found/i.test(e.message)) {
-      if (isRider) { $("login").style.display = "none"; $("job").innerHTML = `<div class="card wait"><div class="ic">⚠️</div><p>เลขประจำตัวนี้ใช้ไม่ได้แล้ว (อาจถูกเปลี่ยนหรือลบ)<br>ติดต่อร้านเพื่อขอเลขใหม่</p><button class="b" onclick="Auth.logout()">ออกจากระบบ</button></div>`; }
-      else { $("login").style.display = ""; $("err").textContent = "ไม่พบเลขประจำตัวนี้ ตรวจเลขอีกครั้ง"; }
+      if (isRider) { $("login").style.display = "none"; $("job").innerHTML = `<div class="card wait"><div class="ic">⚠️</div><p>เลขใบงานนี้ใช้ไม่ได้แล้ว (แผนอาจถูกยกเลิก)<br>ติดต่อร้านเพื่อขอเลขใหม่</p><button class="b" onclick="Auth.logout()">ออกจากระบบ</button></div>`; }
+      else { $("login").style.display = ""; $("err").textContent = "ไม่พบเลขใบงานนี้ ตรวจเลขอีกครั้ง"; }
     } else if (manual) { $("err").textContent = e.message; }
   }
 }
 
-function showWaiting(res) {
-  $("job").innerHTML = `<div class="card wait"><div class="ic">⏳</div>
-    <h3>สวัสดี ${esc(res.rider.name)}</h3>
-    <p class="msg">ตอนนี้ยังไม่มีงานให้คุณ<br>เมื่อร้านยืนยันแผนจัดส่งแล้ว งานจะขึ้นที่หน้านี้เอง</p>
-    <p class="msg">(หน้านี้อัปเดตอัตโนมัติ ไม่ต้องรีเฟรช)</p></div>`;
-}
-
-function show(res) {
-  const j = res.job, all = j.stops.every((s) => s.delivered), n = j.stops.filter((s) => s.delivered).length;
+function show(j) {
   $("job").innerHTML = `
-    <div class="head" style="background:${j.color}">${esc(res.rider.name)} · <b>รอบที่ ${res.round}</b><br>วันที่ ${esc(j.date)}</div>
+    <div class="head" style="background:${j.color}">ไรเดอร์คนที่ <b>${j.riderNo}</b><br>วันที่ ${esc(j.date)}</div>
     <div class="sum">
       <div><span>ข้าวกล่องที่ต้องหยิบ</span><b>${j.boxes} กล่อง</b></div>
       <div><span>จำนวนจุดส่ง</span><b>${j.stops.length} จุด</b></div>
@@ -98,41 +85,26 @@ function show(res) {
       <div><span>ต้องส่งให้เสร็จก่อน</span><b>${esc(j.deadlineTime)}</b></div>
     </div>
     <a class="b" href="${esc(j.mapUrl)}" target="_blank" rel="noopener">🗺️ เปิดแผนที่นำทางทั้งเส้นทาง</a>
-    <div class="prog">ส่งแล้ว <b>${n} / ${j.stops.length}</b> จุด${all ? " 🎉 ส่งครบแล้ว — รองานรอบใหม่จากร้านได้เลย" : ""}
-      <div class="bar"><i style="width:${(n / j.stops.length) * 100}%"></i></div></div>
     <h2 class="t">ลำดับการส่ง</h2>
     ${j.stops.map((s) => `
-      <div class="card stop ${s.delivered ? "done" : ""}">
+      <div class="card stop">
         <div class="num" style="background:${j.color}">${s.seq}</div>
         <div style="flex:1">
           <h3>จุดที่ ${s.seq}: บ้านคุณ ${esc(s.name)}</h3>
           <p>📍 ${esc(s.address)}</p>
           <p>📦 <span class="tag">${s.boxes} กล่อง</span> · ถึงโดยประมาณ <b>${esc(s.eta)}</b></p>
-          ${s.delivered
-            ? `<div class="okmsg">✅ ส่งแล้ว${s.deliveredAt ? " เวลา " + esc(s.deliveredAt) : ""}</div>`
-            : `<a class="b sec" href="tel:${esc(s.phone)}">📞 โทร ${esc(s.phone)}</a>
+          <a class="b sec" href="tel:${esc(s.phone)}">📞 โทร ${esc(s.phone)}</a>
           <a class="b" href="${esc(s.mapUrl)}" target="_blank" rel="noopener">🧭 นำทางไปจุดนี้</a>
-          <button class="b ok" onclick="deliver('${j.code}', ${s.seq}, '${esc(s.name).replace(/'/g, "")}')">✅ ส่งเสร็จแล้ว (ยืนยันการส่ง)</button>`}
         </div>
       </div>`).join("")}
     <p class="msg" style="text-align:center">รวมระยะทาง ${j.km} กม. · คาดว่าเสร็จ ${esc(j.finishTime)}</p>
-    ${isRider ? "" : `<a class="b sec" href="rider.html">ใส่เลขไรเดอร์อื่น</a>`}`;
-}
-
-// ไรเดอร์กดยืนยันว่าส่งจุดนี้แล้ว → บันทึกที่ร้าน แล้วโหลดใหม่
-async function deliver(jobCode, seq, name) {
-  if (!confirm("ยืนยันว่าส่งอาหารให้คุณ " + name + " เรียบร้อยแล้ว?")) return;
-  try {
-    await call("/job/" + jobCode + "/stops/" + seq + "/deliver", "PUT");
-    lastJson = ""; await refresh();
-    toast("บันทึกการส่งแล้ว ร้านเห็นผลทันที");
-  } catch (e) { toast(/not found|Cannot PUT/i.test(e.message) ? "ระบบหลังบ้านยังไม่รองรับการยืนยันส่ง" : e.message); }
+    ${isRider ? "" : `<a class="b sec" href="rider.html">ใส่เลขใบงานอื่น</a>`}`;
 }
 
 $("code").addEventListener("keydown", (e) => e.key === "Enter" && loadFromInput());
 if (isRider) $("login").style.display = "none";
 refresh(true);
-setInterval(refresh, 15000); // เช็กงานรอบใหม่ทุก 15 วินาที
+setInterval(refresh, 15000); // เช็กทุก 15 วินาที ถ้าร้านลบแผนจะขึ้นว่าเลขใบงานใช้ไม่ได้แล้ว
 </script>
 </body>
 </html>

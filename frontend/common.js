@@ -4,7 +4,7 @@ const $ = (id) => document.getElementById(id);
 const money = (n) => Number(n).toLocaleString("th-TH", { maximumFractionDigits: 2 }) + " ฿";
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 // ที่อยู่ backend: ใส่ ?api=http://host:port ต่อท้าย URL เพื่อกำหนดเอง (จำไว้ในแท็บนั้น)
-// ไม่ระบุ: เปิดผ่านพอร์ต 3000 ใช้ origin เดียวกัน ส่วนกรณีอื่น (เปิดเป็นไฟล์ / Live Server) ใช้ http://localhost:3000
+// ไม่ระบุ: เปิดผ่านพอร์ต 3000 หรือโดเมนจริง (เช่น Render) ใช้ origin เดียวกัน ส่วนกรณีอื่น (เปิดเป็นไฟล์ / Live Server) ใช้ http://127.0.0.1:3000
 const API = (() => {
   try {
     const q = new URLSearchParams(location.search).get("api");
@@ -12,7 +12,8 @@ const API = (() => {
     const saved = sessionStorage.getItem("api");
     if (saved) return saved;
   } catch { }
-  return location.protocol.startsWith("http") && location.port === "3000" ? location.origin : "http://127.0.0.1:3000"; // ใช้ 127.0.0.1 แทน localhost กัน localhost ไปชนโปรแกรมอื่นที่จองพอร์ต 3000 ฝั่ง IPv6 (::1)
+  const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  return location.protocol.startsWith("http") && (location.port === "3000" || !local) ? location.origin : "http://127.0.0.1:3000"; // ใช้ 127.0.0.1 แทน localhost กัน localhost ไปชนโปรแกรมอื่นที่จองพอร์ต 3000 ฝั่ง IPv6 (::1)
 })();
 const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
 
@@ -35,7 +36,6 @@ const PAGES = [
   ["customers", "customers.html", "👥 ลูกค้า"],
   ["orders", "orders.html", "📦 ออเดอร์"],
   ["gps", "gps.html", "🗺️ จัดเส้นทางจัดส่ง"],
-  ["riders", "riders.html", "🧑‍🤝‍🧑 จัดการไรเดอร์"],
   ["rider", "rider.html", "🛵 หน้าจอไรเดอร์"],
 ];
 

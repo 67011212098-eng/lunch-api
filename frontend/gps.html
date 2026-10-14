@@ -9,34 +9,6 @@
   <link rel="stylesheet" href="common.css">
   <script src="auth.js" data-role="owner"></script>
   <style>
-    .tabs {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 12px
-    }
-
-    .tab {
-      padding: 8px 12px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #fff;
-      cursor: pointer;
-      font-size: 14px
-    }
-
-    .tab.on {
-      border-color: var(--brand);
-      background: var(--brand-soft);
-      font-weight: 700
-    }
-
-    .tab small {
-      display: block;
-      color: var(--mute);
-      font-weight: 400
-    }
-
     .stats {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -88,16 +60,6 @@
       color: #7a5200
     }
 
-    /* ใช้ 2 คลาส ไม่ใช้ [hidden] เพราะ display:flex ทับ */
-    #assignModal { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 2500; display: none; align-items: center; justify-content: center; padding: 16px }
-    #assignModal.open { display: flex }
-    .abox { background: #fff; border-radius: 14px; width: 100%; max-width: 520px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden }
-    .abox .ah { padding: 14px 16px; border-bottom: 1px solid var(--line); font-weight: 700 }
-    .abox .ab { padding: 12px 16px; overflow: auto }
-    .abox .af { padding: 12px 16px; border-top: 1px solid var(--line); display: flex; gap: 8px; justify-content: flex-end }
-    .arow { display: flex; align-items: center; gap: 8px; margin: 8px 0 }
-    .arow select { flex: 1 }
-    .arow.dup select { border-color: var(--bad); background: #fff0f0 }
     #mapModal {
       position: fixed;
       inset: 0;
@@ -194,13 +156,6 @@
     </section>
   </main>
 
-  <div id="assignModal">
-    <div class="abox">
-      <div class="ah">เลือกไรเดอร์ที่จะวิ่งแต่ละเส้นทาง</div>
-      <div class="ab" id="assignBody"></div>
-      <div class="af"><button class="sec" onclick="closeAssign()">ยกเลิก</button><button onclick="submitAssign()">✅ ยืนยันแผน</button></div>
-    </div>
-  </div>
   <div id="mapModal">
     <div class="mbox">
       <div class="mhead">
@@ -221,8 +176,7 @@
     renderTop("gps", true);
     window.onDateChange = async () => { await loadOrders(); restoreState(); };
 
-    let data = null;      // ผลล่าสุดจาก /route/optimize
-    let selected = 0;     // index ของ option ที่เลือก
+    let data = null;      // ผลล่าสุดจาก /route/optimize (แผนที่ดีที่สุดแผนเดียว)
     let map, layer;
     let confirmedPlan = null, mapOpen = false, ordersSig = "";
 
@@ -232,15 +186,15 @@
     function saveState() {
       try {
         const all = allState(), d = $("date").value;
-        if (data) all[d] = { data, selected, confirmedPlan, mapOpen, sig: ordersSig }; else delete all[d];
+        if (data) all[d] = { data, confirmedPlan, mapOpen, sig: ordersSig }; else delete all[d];
         localStorage.setItem(KEY, JSON.stringify(all));
       } catch { }
     }
     function restoreState() {
       const s = allState()[$("date").value];
-      if (!s || !s.data) return;
+      if (!s || !s.data || !s.data.riders) return;
       if (s.sig !== ordersSig) { toast("ออเดอร์เปลี่ยนไปจากตอนคำนวณ จึงต้องคำนวณเส้นทางใหม่"); saveStateClear(); return; }
-      data = s.data; selected = s.selected; confirmedPlan = s.confirmedPlan;
+      data = s.data; confirmedPlan = s.confirmedPlan;
       $("btnMap").disabled = false;
       render();
       if (confirmedPlan) showPlan(confirmedPlan);
@@ -265,9 +219,7 @@
       btns.forEach((b) => (b.disabled = true));
       try {
         data = await call("/route/optimize", "POST", { date: $("date").value, ...(seed ? { seed } : {}) });
-        if (!data.options.length || !data.options[0].riders.length) { toast("ไม่มีออเดอร์ในวันนี้"); data = null; $("btnMap").disabled = true; return; }
-        // เลือกตัวเลือกที่กำไรสูงสุดเป็นค่าเริ่มต้น
-        selected = data.options.reduce((b, o, i, a) => (o.summary.profit > a[b].summary.profit ? i : b), 0);
+        if (!data.riders.length) { toast("ไม่มีออเดอร์ในวันนี้"); data = null; $("btnMap").disabled = true; return; }
         $("btnMap").disabled = false;
         render();
         saveState();
@@ -285,11 +237,11 @@
         for (let i = 1; i <= 15; i++) {
           toast(`กำลังหาเส้นทางที่ไม่ขาดทุน… (${i}/15)`);
           const d = await call("/route/optimize", "POST", { date: $("date").value });
-          d.options.forEach((o, idx) => { if (!best || o.summary.profit > best.o.summary.profit) best = { d, o, idx }; });
-          if (best.o.summary.profit >= 0) break;
+          if (!best || d.summary.profit > best.summary.profit) best = d;
+          if (best.summary.profit >= 0) break;
         }
-        data = best.d; selected = best.idx; render(); drawMap(); saveState();
-        toast(best.o.summary.profit >= 0 ? "พบเส้นทางที่ไม่ขาดทุนแล้ว" : "ลองแล้ว ทุกทางเลือกยังขาดทุน — ที่ดีที่สุดคือขาดทุนน้อยสุดที่แสดงอยู่");
+        data = best; render(); drawMap(); saveState();
+        toast(best.summary.profit >= 0 ? "พบเส้นทางที่ไม่ขาดทุนแล้ว" : "ลองแล้วยังขาดทุน — ที่ดีที่สุดคือขาดทุนน้อยสุดที่แสดงอยู่");
       } catch (e) { toast(e.message); }
       finally { btns.forEach((b) => (b.disabled = false)); }
     }
@@ -311,17 +263,12 @@
   </div>`;
     }
     function ridersTable(o) {
-      return `<table><thead><tr><th>ไรเดอร์</th><th class="n">กล่อง</th><th class="n">กม.</th><th class="n">ค่าจ้าง</th><th class="n">เสร็จ</th><th>สถานะการส่ง</th></tr></thead><tbody>${o.riders.map((r) =>
+      return `<table><thead><tr><th>ไรเดอร์</th><th class="n">กล่อง</th><th class="n">กม.</th><th class="n">ค่าจ้าง</th><th class="n">เสร็จ</th></tr></thead><tbody>${o.riders.map((r) =>
         `<tr><td><span class="dot" style="background:${r.color}"></span>คนที่ ${r.riderNo}${r.lateCount ? " ⏰" : ""}</td><td class="n">${r.boxes}</td><td class="n">${r.km}</td><td class="n">${money(r.fee)}</td><td class="n">${r.finishTime}</td></tr>`).join("")}</tbody></table>`;
     }
-    function tabsHTML() {
-      return `<div class="tabs">${data.options.map((o, i) =>
-        `<div class="tab ${i === selected ? "on" : ""}" onclick="pick(${i})">${esc(o.label)}<small class="profit ${o.summary.profit < 0 ? "neg" : "pos"}">${o.summary.profit < 0 ? "ขาดทุน " : "กำไร "}${money(Math.abs(o.summary.profit))} · ${o.summary.riders} คน</small></div>`).join("")}</div>`;
-    }
     function render() {
-      const o = data.options[selected];
       $("result").innerHTML = `
-    ${tabsHTML()}${summaryHTML(o)}${ridersTable(o)}
+    ${summaryHTML(data)}${ridersTable(data)}
     <div class="row" style="margin-top:14px">
       <button class="sec" onclick="optimize(false)">🔄 คำนวณใหม่ / เสนอเส้นทางอื่น</button>
       <button class="sec" onclick="openMap()">🗺️ ดูแผนที่ขนาดใหญ่</button>
@@ -329,14 +276,11 @@
     </div>`;
       renderSide();
     }
-    function pick(i) { selected = i; render(); drawMap(); saveState(); }
 
     function renderSide() {
       if (!data) return;
-      const o = data.options[selected];
-      $("mapTitle").textContent = "แผนที่เส้นทาง — " + o.label;
-      $("mapSide").innerHTML = `${tabsHTML()}${summaryHTML(o)}
-    <div class="legend"><b>สีเส้นทาง</b> <span class="msg">(เส้นประ = กำลังโหลดเส้นทางถนน)</span>${o.riders.map((r) => `<div><span class="dot" style="background:${r.color}"></span>ไรเดอร์คนที่ ${r.riderNo}: ${r.stops.length} จุด · ${r.km} กม. · ถึง ${r.finishTime}</div>`).join("")}</div>`;
+      $("mapSide").innerHTML = `${summaryHTML(data)}
+    <div class="legend"><b>สีเส้นทาง</b> <span class="msg">(เส้นประ = กำลังโหลดเส้นทางถนน)</span>${data.riders.map((r) => `<div><span class="dot" style="background:${r.color}"></span>ไรเดอร์คนที่ ${r.riderNo}: ${r.stops.length} จุด · ${r.km} กม. · ถึง ${r.finishTime}</div>`).join("")}</div>`;
     }
 
     /* ---------- แผนที่ ---------- */
@@ -372,9 +316,9 @@
       const token = ++drawToken;
       renderSide();
       layer.clearLayers();
-      const o = data.options[selected], all = [[SHOP.lat, SHOP.lng]];
+      const all = [[SHOP.lat, SHOP.lng]];
       L.marker([SHOP.lat, SHOP.lng], { icon: L.divIcon({ className: "", html: `<div class="pin" style="background:#222;width:30px;height:30px;font-size:16px">🏪</div>`, iconSize: [30, 30], iconAnchor: [15, 15] }) }).bindTooltip("ร้าน").addTo(layer);
-      o.riders.forEach((r) => {
+      data.riders.forEach((r) => {
         const pts = [[SHOP.lat, SHOP.lng], ...r.stops.map((s) => [s.lat, s.lng])];
         // วาดเส้นตรงบาง ๆ ไปก่อน แล้วเปลี่ยนเป็นเส้นตามถนนจริงเมื่อ OSRM ตอบกลับ
         const fallback = L.polyline(pts, { color: r.color, weight: 3, opacity: 0.6, dashArray: "6 8" }).addTo(layer);
@@ -398,7 +342,7 @@
 // ล้างเฉพาะสิ่งที่แสดงและจำไว้ในหน้านี้ ไม่ลบออเดอร์หรือข้อมูลใน backend
 function clearPlan() {
   if (!confirm("ล้างแผนเส้นทางและรหัสใบงานที่แสดงอยู่? (ออเดอร์ในระบบยังอยู่ ไม่ถูกลบ)")) return;
-  saveStateClear(); clearInterval(showPlan.t);
+  saveStateClear();
   closeMapQuiet();
   loadOrders();
   toast("ล้างแผนแล้ว พร้อมจัดเส้นทางรอบใหม่");
@@ -407,63 +351,19 @@ function clearPlan() {
 function closeMapQuiet() { $("mapModal").classList.remove("open"); mapOpen = false; if (layer) layer.clearLayers(); }
 
 /* ---------- ยืนยันแผน ---------- */
-    // ดูความคืบหน้าที่ไรเดอร์กดยืนยันส่ง (ดึงใบงานของแต่ละคนทุก 10 วินาที)
-    async function refreshProgress(r) {
-      if (!$("pgAll")) return;
-      let done = 0, total = 0;
-      await Promise.all(r.riders.map(async (x) => {
-        try {
-          const j = await call("/job/" + x.code);
-          const n = j.stops.filter((s) => s.delivered).length;
-          done += n; total += j.stops.length;
-          const last = j.stops.filter((s) => s.deliveredAt).map((s) => s.deliveredAt).sort().pop();
-          const el = $("pg-" + x.code); if (!el) return;
-          el.innerHTML = n === j.stops.length ? `<b style="color:var(--ok)">✅ ส่งครบ ${n}/${n}</b>${last ? " · " + last : ""}` : `${n}/${j.stops.length} จุด${n ? " · ล่าสุด " + (last || "") : " · ยังไม่เริ่ม"}`;
-        } catch { const el = $("pg-" + x.code); if (el) el.textContent = "ดูสถานะไม่ได้"; }
-      }));
-      if ($("pgAll") && total) $("pgAll").innerHTML = `ภาพรวม: ส่งแล้ว <b>${done}/${total}</b> จุด${done === total ? " 🎉 ส่งครบทุกจุดแล้ว" : ""} <span style="opacity:.7">(อัปเดตอัตโนมัติทุก 10 วินาที)</span>`;
-    }
     function showPlan(r) {
       $("confirmed").style.display = "";
       $("jobs").innerHTML = `<p class="msg">แผน #${r.planId} · ${r.summary.riders} ไรเดอร์ · กำไร ${money(r.summary.profit)}</p>` +
-        `<table><thead><tr><th>ไรเดอร์</th><th>เลขประจำตัว</th><th class="n">กล่อง</th><th class="n">เสร็จ</th></tr></thead><tbody>${r.riders.map((x) =>
-          `<tr><td><span class="dot" style="background:${x.color}"></span>${esc(x.riderName || "คนที่ " + x.riderNo)} <span class="msg">(เส้นทางที่ ${x.riderNo})</span></td><td><b style="font-size:18px;letter-spacing:2px">${esc(x.riderCode || x.code)}</b></td><td class="n">${x.boxes}</td><td class="n">${x.finishTime}</td><td id="pg-${x.code}" class="msg">กำลังโหลด…</td></tr>`).join("")}</tbody></table><p id="pgAll" class="msg" style="margin-top:10px"></p>`;
-      refreshProgress(r); clearInterval(showPlan.t); showPlan.t = setInterval(() => refreshProgress(r), 10000);
+        `<table><thead><tr><th>ไรเดอร์</th><th>เลขใบงาน</th><th class="n">กล่อง</th><th class="n">เสร็จ</th></tr></thead><tbody>${r.riders.map((x) =>
+          `<tr><td><span class="dot" style="background:${x.color}"></span>คนที่ ${x.riderNo}</td><td><b style="font-size:18px;letter-spacing:2px">${esc(x.code)}</b></td><td class="n">${x.boxes}</td><td class="n">${x.finishTime}</td></tr>`).join("")}</tbody></table>`;
     }
-    // กด "ยืนยันแผนนี้" → ให้เลือกก่อนว่าแต่ละเส้นทางจะให้ไรเดอร์คนไหนไป
-    let riderList = [];
+    // กด "ยืนยันแผนนี้" → บันทึกแผนและออกเลขใบงาน 6 หลักให้ไรเดอร์แต่ละคน
     async function confirmPlan() {
-      const o = data.options[selected];
-      if (o.summary.profit < 0 && !confirm("แผนนี้ขาดทุน ต้องการยืนยันจริงหรือไม่?")) return;
-      try { riderList = await call("/rider"); } catch (e) { toast("โหลดรายชื่อไรเดอร์ไม่ได้: " + e.message); return; }
-      if (riderList.length < o.riders.length) {
-        toast(`แผนนี้ใช้ ${o.riders.length} เส้นทาง แต่มีไรเดอร์ ${riderList.length} คน — เพิ่มไรเดอร์ที่หน้า "จัดการไรเดอร์" หรือเลือกทางเลือกที่ใช้ไรเดอร์น้อยกว่า`);
-        return;
-      }
-      $("assignBody").innerHTML = `<p class="msg" style="margin-top:0">แต่ละเส้นทางเลือกไรเดอร์คนละคน (เลือกซ้ำไม่ได้)</p>` + o.riders.map((r, i) =>
-        `<div class="arow"><span class="dot" style="background:${r.color}"></span><span style="width:96px">คนที่ ${r.riderNo} · ${r.stops.length} จุด</span>
-          <select data-slot="${r.riderNo}" onchange="checkDup()">${riderList.map((x, k) => `<option value="${x.id}" ${k === i ? "selected" : ""}>${esc(x.name)} (${esc(x.code)})</option>`).join("")}</select></div>`).join("");
-      checkDup();
-      $("assignModal").classList.add("open");
-    }
-    function closeAssign() { $("assignModal").classList.remove("open"); }
-    function checkDup() {
-      const sels = [...document.querySelectorAll("#assignBody select")];
-      const count = {};
-      sels.forEach((x) => (count[x.value] = (count[x.value] || 0) + 1));
-      sels.forEach((x) => x.parentElement.classList.toggle("dup", count[x.value] > 1));
-      return Object.values(count).every((n) => n === 1);
-    }
-    async function submitAssign() {
-      if (!checkDup()) { toast("เลือกไรเดอร์ซ้ำกัน — ให้แต่ละเส้นทางเป็นคนละคน"); return; }
-      const o = data.options[selected];
-      const assignments = {};
-      document.querySelectorAll("#assignBody select").forEach((x) => (assignments[x.dataset.slot] = Number(x.value)));
+      if (data.summary.profit < 0 && !confirm("แผนนี้ขาดทุน ต้องการยืนยันจริงหรือไม่?")) return;
       try {
-        const r = await call("/route/plan", "POST", { date: data.date, strategy: o.strategy, seed: data.seed, assignments });
-        closeAssign();
+        const r = await call("/route/plan", "POST", { date: data.date, seed: data.seed });
         confirmedPlan = r; showPlan(r); saveState();
-        toast("ยืนยันแผนแล้ว งานรอบนี้ขึ้นที่หน้าจอไรเดอร์ทุกคนแล้ว");
+        toast("ยืนยันแผนแล้ว แจ้งเลขใบงานให้ไรเดอร์แต่ละคน");
         $("confirmed").scrollIntoView({ behavior: "smooth" });
       } catch (e) { toast(e.message); }
     }

@@ -42,7 +42,7 @@ label{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
     </form>
 
     <form id="fRider" onsubmit="loginRider(event)" style="display:none">
-      <label for="code">เลขประจำตัวไรเดอร์ 6 หลัก (ที่ร้านแจ้งให้)</label>
+      <label for="code">เลขใบงาน 6 หลัก (ที่ร้านแจ้งให้)</label>
       <input id="code" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="off">
       <button class="go" type="submit">เข้าสู่ระบบ</button>
     </form>
@@ -81,10 +81,10 @@ async function loginRider(e) {
   const code = $("code").value.trim();
   if (!/^\d{6}$/.test(code)) { $("err").textContent = "เลขใบงานต้องเป็นตัวเลข 6 หลัก"; return; }
   try {
-    const res = await call("/rider/" + code + "/current"); // ให้ backend ตรวจว่ามีไรเดอร์เลขนี้จริง
-    Auth.login("rider", { code, name: res.rider.name });
+    const job = await call("/job/" + code); // ให้ backend ตรวจว่ามีเลขใบงานนี้จริง
+    Auth.login("rider", { code, name: "ไรเดอร์คนที่ " + job.riderNo });
     location.replace("rider.html");
-  } catch (er) { $("err").textContent = /not found/i.test(er.message) ? "ไม่พบเลขประจำตัวนี้ ตรวจเลขอีกครั้ง" : er.message; }
+  } catch (er) { $("err").textContent = /not found/i.test(er.message) ? "ไม่พบเลขใบงานนี้ ตรวจเลขอีกครั้ง" : er.message; }
 }
 </script>
 </body>

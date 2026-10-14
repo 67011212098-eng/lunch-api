@@ -24,7 +24,7 @@
         <button onclick="addOrder()">➕ เพิ่มออเดอร์</button>
         <span style="flex:1"></span>
         <button class="sec" onclick="simulate()">🎲 สุ่มออเดอร์ทดสอบ</button>
-        <button class="sec" onclick="clearOrders()">ลบทั้งหมดของวันนี้</button>
+        <button class="sec" onclick="clearOrders()">ลบออเดอร์ทั้งหมด</button>
       </div>
       <div class="scroll" style="max-height:520px">
         <table>
@@ -77,8 +77,8 @@
       try { await call("/order/simulate", "POST", { date: $("date").value }); toast("สุ่มออเดอร์แล้ว"); loadOrders(); } catch (e) { toast(e.message); }
     }
     async function clearOrders() {
-      if (!confirm("ลบออเดอร์ทั้งหมดของวันที่เลือก?")) return;
-      try { await call("/order?date=" + $("date").value, "DELETE"); loadOrders(); } catch (e) { toast(e.message); }
+      if (!confirm("ลบออเดอร์ทั้งหมดในระบบ (ทุกวัน)?")) return;
+      try { await call("/order/simulate", "DELETE"); loadOrders(); } catch (e) { toast(e.message); }
     }
     loadOrders();
   </script>

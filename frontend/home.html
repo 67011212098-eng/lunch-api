@@ -88,11 +88,6 @@
         <h3>จัดเส้นทางจัดส่ง</h3>
         <p>ให้ระบบแบ่งงานไรเดอร์ ดูเส้นทางบนแผนที่ และสรุปกำไร/ขาดทุน</p><b>เริ่มจัดเส้นทาง </b>
       </a>
-      <a class="tile" href="riders.html">
-        <div class="ic">🧑‍🤝‍🧑</div>
-        <h3>จัดการไรเดอร์</h3>
-        <p>เพิ่มไรเดอร์ ดูและคัดลอกเลขประจำตัว 6 หลักเพื่อส่งให้ไรเดอร์ล็อกอิน</p><b id="sRider">&nbsp;</b>
-      </a>
       <a class="tile" href="rider.html">
         <div class="ic">🛵</div>
         <h3>หน้าจอไรเดอร์</h3>
@@ -105,11 +100,10 @@
     renderTop("home", false);
     (async () => {
       try {
-        const [cs, os, rs] = await Promise.all([call("/customer"), call("/order?date=" + today()), call("/rider")]);
-        $("sRider").textContent = `ไรเดอร์ ${rs.length} คน`;
+        const [cs, os] = await Promise.all([call("/customer"), call("/order?date=" + today())]);
         $("sCust").textContent = `ลูกค้าทั้งหมด ${cs.length} คน`;
         $("sOrder").textContent = `วันนี้ ${os.length} ออเดอร์ · ${os.reduce((s, o) => s + o.boxes, 0)} กล่อง`;
-      } catch { $("sCust").textContent = ""; $("sOrder").textContent = ""; $("sRider").textContent = ""; }
+      } catch { $("sCust").textContent = ""; $("sOrder").textContent = ""; }
     })();
   </script>
 </body>
