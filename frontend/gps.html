@@ -60,6 +60,54 @@
       color: #7a5200
     }
 
+    .recalc {
+      background: var(--brand-soft);
+      border: 1px solid var(--brand);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      animation: recalcIn .9s ease-out
+    }
+
+    .recalc .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px
+    }
+
+    .chip {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-size: 13px
+    }
+
+    .chip.up {
+      color: var(--ok);
+      border-color: var(--ok)
+    }
+
+    .chip.down {
+      color: var(--bad);
+      border-color: var(--bad)
+    }
+
+    .flash {
+      animation: flashIn .6s ease-out
+    }
+
+    @keyframes recalcIn {
+      from { background: #fff3bf; transform: scale(.98) }
+      to { background: var(--brand-soft); transform: none }
+    }
+
+    @keyframes flashIn {
+      from { opacity: .3 }
+      to { opacity: 1 }
+    }
+
     #mapModal {
       position: fixed;
       inset: 0;
@@ -208,30 +256,73 @@
       try {
         const rows = await call("/order?date=" + $("date").value);
         ordersSig = rows.map((o) => o.id + ":" + o.boxes).join(",");
-        data = null; confirmedPlan = null; $("btnMap").disabled = true;
+        data = null; confirmedPlan = null; recalcNote = null; recalcCount = 0; $("btnMap").disabled = true;
         $("mapModal").classList.remove("open"); mapOpen = false; $("confirmed").style.display = "none";
         $("result").innerHTML = `<p class="msg">วันนี้มี ${rows.length} ออเดอร์ (${rows.reduce((s, o) => s + o.boxes, 0)} กล่อง) · กด "คำนวณเส้นทาง" เพื่อให้ระบบเสนอเส้นทางจัดส่ง</p>`;
       } catch (e) { toast("โหลดออเดอร์ไม่ได้: " + e.message); }
     }
 
     /* ---------- คำนวณเส้นทาง ---------- */
+    let recalcNote = null, recalcCount = 0;
+    const planSig = (p) => p.riders.map((r) => r.stops.map((s) => s.orderId).join(">")).sort().join("|");
+
+    // เทียบแผนใหม่กับแผนก่อนหน้า เพื่อบอกผู้ใช้ว่าคำนวณใหม่แล้วเปลี่ยนไปอย่างไร
+    function noteRecalc(prev, cur) {
+      if (!prev) { recalcNote = null; return; }
+      recalcCount++;
+      const a = prev.summary, b = cur.summary, same = planSig(prev) === planSig(cur);
+      const delta = (x, y) => Math.round((y - x) * 100) / 100;
+      recalcNote = {
+        n: recalcCount, seed: cur.seed, same, time: new Date().toLocaleTimeString("th-TH", { hour12: false }),
+        changes: [
+          ["กำไร", delta(a.profit, b.profit), 1, (v) => money(v)],
+          ["ค่าจ้างไรเดอร์", delta(a.riderCost, b.riderCost), -1, (v) => money(v)],
+          ["ระยะทางรวม", delta(a.totalKm, b.totalKm), -1, (v) => v.toFixed(2) + " กม."],
+          ["ไรเดอร์", delta(a.riders, b.riders), 0, (v) => v + " คน"],
+        ],
+      };
+    }
+    function recalcNoteHTML() {
+      if (!recalcNote) return "";
+      const n = recalcNote;
+      const chips = n.same
+        ? `<span class="chip">ได้แผนเดิม — ระบบยังไม่พบเส้นทางที่ดีกว่านี้</span>`
+        : n.changes.map(([label, d, good, fmt]) => {
+          if (d === 0) return `<span class="chip">${label} เท่าเดิม</span>`;
+          const cls = good === 0 ? "" : d * good > 0 ? "up" : "down";
+          return `<span class="chip ${cls}">${label} ${d > 0 ? "+" : "−"}${fmt(Math.abs(d))}</span>`;
+        }).join("");
+      return `<div class="recalc"><b>🔄 คำนวณใหม่แล้ว</b> · ครั้งที่ ${n.n} · ${n.time} <span class="msg">(seed ${n.seed})</span><div class="chips">${chips}</div></div>`;
+    }
+    function flash(el) { el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); }
+    function setBusy(on) {
+      [$("btnPlan"), $("btnRe2"), ...document.querySelectorAll(".btnRe")].forEach((b) => {
+        if (b.dataset.label === undefined) b.dataset.label = b.textContent;
+        b.disabled = on; b.textContent = on ? "⏳ กำลังคำนวณ…" : b.dataset.label;
+      });
+    }
+
     async function optimize(openAfter, seed) {
-      const btns = [$("btnPlan"), $("btnRe2")];
-      btns.forEach((b) => (b.disabled = true));
+      const prev = data;
+      setBusy(true);
       try {
-        data = await call("/route/optimize", "POST", { date: $("date").value, ...(seed ? { seed } : {}) });
-        if (!data.riders.length) { toast("ไม่มีออเดอร์ในวันนี้"); data = null; $("btnMap").disabled = true; return; }
+        const next = await call("/route/optimize", "POST", { date: $("date").value, ...(seed ? { seed } : {}) });
+        if (!next.riders.length) { toast("ไม่มีออเดอร์ในวันนี้"); data = null; recalcNote = null; $("btnMap").disabled = true; return; }
+        data = next;
+        noteRecalc(prev, data);
         $("btnMap").disabled = false;
         render();
+        flash($("result")); flash($("mapSide"));
+        if (recalcNote) toast(recalcNote.same ? "คำนวณใหม่แล้ว — ได้แผนเดิม" : "คำนวณใหม่แล้ว — ได้แผนใหม่ ดูรายละเอียดที่แถบด้านบน");
         saveState();
         if (openAfter) openMap(); else drawMap();
       } catch (e) { toast(e.message); }
-      finally { btns.forEach((b) => (b.disabled = false)); }
+      finally { setBusy(false); }
     }
 
     // ค้นหาแผนที่ไม่ขาดทุน: สุ่ม seed ใหม่ซ้ำ ๆ จนกว่าจะมีตัวเลือกที่กำไร >= 0
     async function reoptimizeNoLoss() {
-      const btns = [...document.querySelectorAll(".btnNoLoss")];
+      const btns = [...document.querySelectorAll(".btnNoLoss")], prev = data;
       btns.forEach((b) => (b.disabled = true));
       try {
         let best = null;
@@ -241,7 +332,7 @@
           if (!best || d.summary.profit > best.summary.profit) best = d;
           if (best.summary.profit >= 0) break;
         }
-        data = best; render(); drawMap(); saveState();
+        data = best; noteRecalc(prev, data); render(); flash($("result")); drawMap(); saveState();
         toast(best.summary.profit >= 0 ? "พบเส้นทางที่ไม่ขาดทุนแล้ว" : "ลองแล้วยังขาดทุน — ที่ดีที่สุดคือขาดทุนน้อยสุดที่แสดงอยู่");
       } catch (e) { toast(e.message); }
       finally { btns.forEach((b) => (b.disabled = false)); }
@@ -269,9 +360,9 @@
     }
     function render() {
       $("result").innerHTML = `
-    ${summaryHTML(data)}${ridersTable(data)}
+    ${recalcNoteHTML()}${summaryHTML(data)}${ridersTable(data)}
     <div class="row" style="margin-top:14px">
-      <button class="sec" onclick="optimize(false)">🔄 คำนวณใหม่ / เสนอเส้นทางอื่น</button>
+      <button class="sec btnRe" onclick="optimize(false)">🔄 คำนวณใหม่ / เสนอเส้นทางอื่น</button>
       <button class="sec" onclick="openMap()">🗺️ ดูแผนที่ขนาดใหญ่</button>
       <button onclick="confirmPlan()">✅ ยืนยันแผนนี้</button>
     </div>`;
@@ -280,7 +371,7 @@
 
     function renderSide() {
       if (!data) return;
-      $("mapSide").innerHTML = `${summaryHTML(data)}
+      $("mapSide").innerHTML = `${recalcNoteHTML()}${summaryHTML(data)}
     <div class="legend"><b>สีเส้นทาง</b> <span class="msg">(เส้นประ = กำลังโหลดเส้นทางถนน)</span>${data.riders.map((r) => `<div><span class="dot" style="background:${r.color}"></span>ไรเดอร์คนที่ ${r.riderNo}: ${r.stops.length} จุด · ${r.km} กม. · ถึง ${r.finishTime}</div>`).join("")}</div>`;
     }
 
