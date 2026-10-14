@@ -143,6 +143,7 @@
         <button class="big" id="btnPlan" onclick="optimize(true)">คำนวณเส้นทาง</button>
         <button class="big sec" id="btnMap" onclick="openMap()" disabled>🗺️ ดูแผนที่ขนาดใหญ่</button>
         <button class="big sec" id="btnClear" onclick="clearPlan()">🧹 ส่งเสร็จแล้ว / ล้างแผน</button>
+        <button class="big sec" onclick="deleteDayPlans()">🗑️ ลบแผนที่ยืนยันทั้งหมดของวันที่เลือก</button>
       </div>
       <div id="result">
         <p class="msg">กด "คำนวณเส้นทาง" เพื่อให้ระบบเสนอเส้นทางจัดส่ง</p>
@@ -339,9 +340,14 @@
     }
 
     /* ---------- ล้างแผน (หลังส่งเสร็จ) ---------- */
-// ล้างเฉพาะสิ่งที่แสดงและจำไว้ในหน้านี้ ไม่ลบออเดอร์หรือข้อมูลใน backend
-function clearPlan() {
-  if (!confirm("ล้างแผนเส้นทางและรหัสใบงานที่แสดงอยู่? (ออเดอร์ในระบบยังอยู่ ไม่ถูกลบ)")) return;
+// ถ้ายืนยันแผนไว้แล้ว จะลบแผนนั้นออกจากระบบด้วย (เลขใบงานใช้ไม่ได้) ออเดอร์ไม่ถูกลบ
+async function clearPlan() {
+  const saved = confirmedPlan;
+  if (!confirm(saved ? "ล้างแผนนี้? แผนที่ยืนยันแล้วจะถูกลบออกจากระบบ และเลขใบงานของไรเดอร์จะใช้ไม่ได้ (ออเดอร์ยังอยู่ ไม่ถูกลบ)" : "ล้างแผนที่คำนวณไว้ในหน้านี้? (ออเดอร์ในระบบยังอยู่ ไม่ถูกลบ)")) return;
+  if (saved) {
+    try { await call("/route/plan/" + saved.planId, "DELETE"); }
+    catch (e) { if (!/not found/i.test(e.message)) { toast(e.message); return; } }
+  }
   saveStateClear();
   closeMapQuiet();
   loadOrders();
@@ -349,6 +355,17 @@ function clearPlan() {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 function closeMapQuiet() { $("mapModal").classList.remove("open"); mapOpen = false; if (layer) layer.clearLayers(); }
+
+// ลบทุกแผนที่ยืนยันไว้ของวันที่เลือก (รวมที่ยืนยันจากเครื่องอื่น) ออเดอร์ไม่ถูกลบ
+async function deleteDayPlans() {
+  const d = $("date").value;
+  if (!confirm(`ลบแผนที่ยืนยันไว้ทั้งหมดของวันที่ ${d}? เลขใบงานของวันนั้นจะใช้ไม่ได้ (ออเดอร์ไม่ถูกลบ)`)) return;
+  try {
+    const r = await call("/route/plan?date=" + encodeURIComponent(d), "DELETE");
+    saveStateClear(); closeMapQuiet(); await loadOrders();
+    toast(r.affected_row ? `ลบแผนของวันที่ ${d} แล้ว ${r.affected_row} แผน` : "วันที่เลือกไม่มีแผนที่ยืนยันไว้");
+  } catch (e) { toast(e.message); }
+}
 
 /* ---------- ยืนยันแผน ---------- */
     function showPlan(r) {

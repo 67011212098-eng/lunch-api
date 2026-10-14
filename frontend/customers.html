@@ -34,6 +34,12 @@
         <input id="cSearch" placeholder="ค้นหาชื่อลูกค้า…" oninput="loadCustomers()">
         <span class="msg">💡 คลิกบนแผนที่เพื่อกำหนดพิกัดบ้านลูกค้า</span>
       </div>
+      <div class="row" style="margin-top:8px">
+        <button class="sec" onclick="nearbyCustomers()">📍 หาลูกค้าใกล้พิกัดที่เลือก</button>
+        <input id="cRadius" type="number" min="0.1" step="0.1" value="1" style="width:90px"><span>กม.</span>
+        <button class="sec" id="cNearClear" onclick="clearNearby()" style="display:none">แสดงลูกค้าทั้งหมด</button>
+        <span class="msg">ใช้พิกัดจากช่องละติจูด/ลองจิจูด (คลิกบนแผนที่) ถ้าเว้นว่างใช้ตำแหน่งร้าน</span>
+      </div>
       <div id="cmap"></div>
     </section>
     <section class="card">
@@ -58,7 +64,7 @@
   <script src="common.js"></script>
   <script>
     renderTop("customers", false);
-    let cmap = leafletMap("cmap", [SHOP.lat, SHOP.lng], 13), layer = L.layerGroup().addTo(cmap), pick, editingId = null, list = [];
+    let cmap = leafletMap("cmap", [SHOP.lat, SHOP.lng], 13), layer = L.layerGroup().addTo(cmap), pick, editingId = null, list = [], nearby = null;
 
     cmap.on("click", (e) => {
       $("cLat").value = e.latlng.lat.toFixed(6); $("cLng").value = e.latlng.lng.toFixed(6);
@@ -69,18 +75,46 @@
     async function loadCustomers() {
       try {
         const q = $("cSearch").value.trim();
-        list = await call("/customer" + (q ? "?name=" + encodeURIComponent(q) : ""));
-        $("custCount").textContent = `(${list.length} คน)`;
+        if (q && nearby) { nearby = null; $("cNearClear").style.display = "none"; }
+        list = await call(nearby ? `/customer/nearby?lat=${nearby.lat}&lng=${nearby.lng}&radius=${nearby.radius}` : "/customer" + (q ? "?name=" + encodeURIComponent(q) : ""));
+        $("custCount").textContent = nearby ? `(ในรัศมี ${nearby.radius} กม. พบ ${list.length} คน)` : `(${list.length} คน)`;
         $("rows").innerHTML = list.map((c) => `<tr><td>${c.id}</td><td>${esc(c.firstname)} ${esc(c.lastname)}</td><td>${esc(c.phone)}</td><td>${esc(c.address)}</td>
-      <td>${Number(c.lat).toFixed(4)}, ${Number(c.lng).toFixed(4)}</td>
-      <td><button class="sec" onclick="focusOn(${c.id})">📍 ดูบนแผนที่</button> <button class="sec" onclick="edit(${c.id})">แก้ไข</button></td></tr>`).join("")
-          || `<tr><td colspan="6" class="msg">ไม่พบลูกค้า</td></tr>`;
+      <td>${Number(c.lat).toFixed(4)}, ${Number(c.lng).toFixed(4)}${c.distance_km !== undefined ? ` · ห่าง ${c.distance_km} กม.` : ""}</td>
+      <td><button class="sec" onclick="focusOn(${c.id})">📍 ดูบนแผนที่</button> <button class="sec" onclick="edit(${c.id})">แก้ไข</button> <button class="sec" onclick="del(${c.id})">🗑️ ลบ</button></td></tr>`).join("")
+          || `<tr><td colspan="6" class="msg">${nearby ? "ไม่มีลูกค้าในรัศมีนี้" : "ไม่พบลูกค้า"}</td></tr>`;
         layer.clearLayers();
         L.marker([SHOP.lat, SHOP.lng], { icon: shopIcon() }).bindTooltip("ร้าน").addTo(layer);
         list.forEach((c) => L.circleMarker([c.lat, c.lng], { radius: 7, color: "#fff", weight: 2, fillColor: getComputedStyle(document.documentElement).getPropertyValue("--brand").trim(), fillOpacity: 1 })
           .bindPopup(`<b>${esc(c.firstname)} ${esc(c.lastname)}</b><br>${esc(c.phone)}<br>${esc(c.address)}`).addTo(layer));
-        if (list.length) cmap.fitBounds([[SHOP.lat, SHOP.lng], ...list.map((c) => [c.lat, c.lng])], { padding: [30, 30] });
+        if (nearby) {
+          const ring = L.circle([nearby.lat, nearby.lng], { radius: nearby.radius * 1000, color: "#e03131", weight: 2, fillOpacity: 0.05 }).addTo(layer);
+          cmap.fitBounds(ring.getBounds(), { padding: [20, 20] });
+        } else if (list.length) cmap.fitBounds([[SHOP.lat, SHOP.lng], ...list.map((c) => [c.lat, c.lng])], { padding: [30, 30] });
       } catch (e) { toast("โหลดลูกค้าไม่ได้: " + e.message); }
+    }
+    function nearbyCustomers() {
+      const empty = $("cLat").value.trim() === "" && $("cLng").value.trim() === "";
+      const lat = empty ? SHOP.lat : Number($("cLat").value), lng = empty ? SHOP.lng : Number($("cLng").value), radius = Number($("cRadius").value);
+      if (isNaN(lat) || isNaN(lng) || !(radius > 0)) { toast("พิกัดและรัศมีต้องเป็นตัวเลข (รัศมีมากกว่า 0)"); return; }
+      nearby = { lat, lng, radius };
+      $("cSearch").value = ""; $("cNearClear").style.display = "";
+      loadCustomers();
+    }
+    function clearNearby() { nearby = null; $("cNearClear").style.display = "none"; loadCustomers(); }
+    async function del(id) {
+      const c = list.find((x) => x.id === id); if (!c) return;
+      if (!confirm(`ลบลูกค้า ${c.firstname} ${c.lastname}?`)) return;
+      try {
+        await call("/customer/" + id, "DELETE");
+      } catch (e) {
+        const n = (/has (\d+) order/.exec(e.message) || [])[1];
+        if (!n) { toast(e.message); return; }
+        if (!confirm(`ลูกค้าคนนี้มี ${n} ออเดอร์อยู่ ลบออเดอร์ของเขาไปพร้อมกันเลยไหม?`)) return;
+        try { await call("/customer/" + id + "?force=true", "DELETE"); } catch (e2) { toast(e2.message); return; }
+      }
+      toast("ลบลูกค้าแล้ว");
+      if (editingId === id) resetForm();
+      loadCustomers();
     }
     function focusOn(id) {
       const c = list.find((x) => x.id === id); if (!c) return;
