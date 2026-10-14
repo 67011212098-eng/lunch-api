@@ -187,6 +187,8 @@ function optimizeGroups(orders: Stop[], seed: number): Stop[][] {
 
 // สุ่มเริ่มต้นหลายรอบ (ตาม seed) แล้วเลือกแผนที่ค่าไรเดอร์ต่ำที่สุด
 const TRIES = 20;
+// seed ที่หารด้วย 10 ลงตัว (ค่าเริ่มต้นของ /route/optimize) ค้นหาเต็มที่ ส่วน seed อื่นค้นน้อยลง ได้แผนหลากหลายขึ้นเล็กน้อยตอนกดคำนวณใหม่
+const triesFor = (seed: number) => (seed % 10 === 0 ? TRIES : 3);
 
 function groupsCost(groups: Stop[][]) {
   return groups.reduce((sum, g) => {
@@ -198,7 +200,7 @@ function groupsCost(groups: Stop[][]) {
 function bestGroups(orders: Stop[], seed: number): Stop[][] {
   let best: Stop[][] = [];
   let bestCost = Infinity;
-  for (let k = 0; k < TRIES; k++) {
+  for (let k = 0; k < triesFor(seed); k++) {
     const groups = optimizeGroups(orders, seed + k);
     const cost = groupsCost(groups);
     if (cost < bestCost) {

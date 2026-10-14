@@ -1,4 +1,1402 @@
 <!doctype html>
-<html lang="th"><head><meta charset="utf-8"><title>เส้นทางอร่อย</title>
-<meta http-equiv="refresh" content="0; url=login.html"></head>
-<body><a href="login.html">เข้าสู่ระบบ</a></body></html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>เส้นทางอร่อย</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root {
+    --bg: #f2fbf9;
+    --card: #fff;
+    --ink: #222;
+    --mute: #777;
+    --line: #d2eae6;
+    --brand: #0e9384;
+    --brand-soft: #e3f6f3;
+    --ok: #2f9e44;
+    --bad: #e03131
+}
+
+* {
+    box-sizing: border-box
+}
+
+body {
+    margin: 0;
+    font-family: "Sarabun", "Noto Sans Thai", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink)
+}
+
+header {
+    background: var(--brand);
+    color: #fff;
+    padding: 14px 20px;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap
+}
+
+header h1 {
+    font-size: 20px;
+    margin: 0;
+    flex: 1
+}
+
+header label {
+    font-size: 13px;
+    display: flex;
+    gap: 6px;
+    align-items: center
+}
+
+nav {
+    background: #fff;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    gap: 4px;
+    padding: 0 14px;
+    overflow-x: auto
+}
+
+nav a {
+    padding: 12px 16px;
+    color: var(--mute);
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+    text-decoration: none
+}
+
+nav a.on {
+    color: var(--brand);
+    border-color: var(--brand);
+    font-weight: 700
+}
+
+input,
+select {
+    padding: 7px 9px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font: inherit
+}
+
+button {
+    font: inherit;
+    padding: 8px 14px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--brand);
+    color: #fff;
+    cursor: pointer
+}
+
+button:hover {
+    filter: brightness(1.08)
+}
+
+button.sec {
+    background: #fff;
+    color: var(--ink);
+    border: 1px solid var(--line)
+}
+
+button.big {
+    padding: 12px 20px;
+    font-size: 16px
+}
+
+button:disabled {
+    opacity: .5;
+    cursor: wait
+}
+
+td button {
+    padding: 4px 9px;
+    font-size: 13px
+}
+
+main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 18px;
+    display: grid;
+    gap: 18px
+}
+
+.card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px
+}
+
+.card h2 {
+    margin: 0 0 12px;
+    font-size: 17px
+}
+
+.row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center
+}
+
+.form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px;
+    margin-bottom: 10px
+}
+
+.form input,
+.form select {
+    width: 100%
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px
+}
+
+th,
+td {
+    padding: 7px 8px;
+    border-bottom: 1px solid var(--line);
+    text-align: left
+}
+
+th {
+    color: var(--mute);
+    font-weight: 600
+}
+
+td.n,
+th.n {
+    text-align: right
+}
+
+.scroll {
+    max-height: 260px;
+    overflow: auto
+}
+
+.dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    vertical-align: middle;
+    margin-right: 6px
+}
+
+.msg {
+    color: var(--mute);
+    font-size: 14px
+}
+
+#toast {
+    position: fixed;
+    left: 50%;
+    bottom: 20px;
+    transform: translateX(-50%);
+    background: #222;
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 8px;
+    display: none;
+    z-index: 3000
+}
+
+.pin {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .5)
+}
+header button.back {
+    background: rgba(255, 255, 255, .2);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, .6);
+    padding: 6px 12px
+}
+
+/* ---- login ---- */
+#view.v-login{display:flex;min-height:100vh;align-items:center;justify-content:center;padding:16px}
+#view.v-login .box{width:100%;max-width:400px}
+#view.v-login .logo{text-align:center;margin-bottom:16px}
+#view.v-login .logo .ic{font-size:44px}
+#view.v-login .logo h1{margin:4px 0 2px;font-size:24px;color:var(--brand)}
+#view.v-login .roles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+#view.v-login .role{border:2px solid var(--line);border-radius:12px;padding:14px 8px;text-align:center;cursor:pointer;background:#fff;font:inherit;color:var(--ink)}
+#view.v-login .role .ic{font-size:30px;display:block}
+#view.v-login .role.on{border-color:var(--brand);background:var(--brand-soft);font-weight:700}
+#view.v-login label{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
+#view.v-login .box input{width:100%;font-size:17px;padding:11px}
+#view.v-login #code{font-size:26px;letter-spacing:8px;text-align:center}
+#view.v-login .go{width:100%;margin-top:16px;padding:13px;font-size:17px;font-weight:700}
+#view.v-login .err{color:#c92a2a;min-height:22px;margin-top:10px;font-size:14px}
+
+/* ---- home ---- */
+#view.v-home .hello{
+      text-align: center;
+      padding: 10px 0 0
+    }
+#view.v-home .hello h2{
+      font-size: 24px;
+      margin: 0 0 4px
+    }
+#view.v-home .menu{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 14px
+    }
+#view.v-home .tile{
+      display: block;
+      text-decoration: none;
+      color: inherit;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px;
+      transition: transform .12s, box-shadow .12s
+    }
+#view.v-home .tile:hover{
+      transform: translateY(-3px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, .08);
+      border-color: var(--brand)
+    }
+#view.v-home .tile .ic{
+      font-size: 36px
+    }
+#view.v-home .tile h3{
+      margin: 8px 0 4px;
+      font-size: 19px
+    }
+#view.v-home .tile p{
+      margin: 0;
+      color: var(--mute);
+      font-size: 14px
+    }
+#view.v-home .tile b{
+      display: block;
+      margin-top: 10px;
+      color: var(--brand);
+      font-size: 15px
+    }
+
+/* ---- customers ---- */
+#view.v-customers #cmap{
+      height: 380px;
+      border-radius: 10px;
+      margin-top: 12px
+    }
+
+/* ---- orders ---- */
+
+/* ---- gps ---- */
+#view.v-gps .stats{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px
+    }
+#view.v-gps .stat{
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px
+    }
+#view.v-gps .stat span{
+      display: block;
+      font-size: 12px;
+      color: var(--mute)
+    }
+#view.v-gps .stat b{
+      font-size: 20px
+    }
+#view.v-gps .profit.pos{
+      color: var(--ok)
+    }
+#view.v-gps .profit.neg{
+      color: var(--bad)
+    }
+#view.v-gps .stat.loss{
+      background: #fff0f0;
+      border-color: var(--bad)
+    }
+#view.v-gps .alert{
+      background: #fff0f0;
+      border: 1px solid var(--bad);
+      color: #a61e1e;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px
+    }
+#view.v-gps .alert.warn{
+      background: #fff9db;
+      border-color: #f59f00;
+      color: #7a5200
+    }
+#view.v-gps .recalc{
+      background: var(--brand-soft);
+      border: 1px solid var(--brand);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      animation: recalcIn .9s ease-out
+    }
+#view.v-gps .recalc .chips{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px
+    }
+#view.v-gps .chip{
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-size: 13px
+    }
+#view.v-gps .chip.up{
+      color: var(--ok);
+      border-color: var(--ok)
+    }
+#view.v-gps .chip.down{
+      color: var(--bad);
+      border-color: var(--bad)
+    }
+#view.v-gps .flash{
+      animation: flashIn .6s ease-out
+    }
+@keyframes recalcIn{
+      from { background: #fff3bf; transform: scale(.98) }
+      to { background: var(--brand-soft); transform: none }
+    }
+@keyframes flashIn{
+      from { opacity: .3 }
+      to { opacity: 1 }
+    }
+#view.v-gps #mapModal{
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .55);
+      z-index: 2000;
+      display: none;
+      padding: 2vh 2vw
+    }
+#view.v-gps #mapModal.open{
+      display: flex
+    }
+#view.v-gps .mbox{
+      background: #fff;
+      border-radius: 12px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden
+    }
+#view.v-gps .mhead{
+      padding: 10px 14px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      border-bottom: 1px solid var(--line)
+    }
+#view.v-gps .mhead .grow{
+      flex: 1
+    }
+#view.v-gps .mbody{
+      flex: 1;
+      display: flex;
+      min-height: 0
+    }
+#view.v-gps #map{
+      flex: 1;
+      min-height: 300px
+    }
+#view.v-gps .side{
+      width: 320px;
+      overflow: auto;
+      padding: 12px;
+      border-left: 1px solid var(--line);
+      font-size: 14px
+    }
+#view.v-gps .legend div{
+      margin: 4px 0
+    }
+@media(max-width:800px){#view.v-gps .mbody{
+        flex-direction: column
+      }
+#view.v-gps .side{
+        width: auto;
+        max-height: 40%;
+        border-left: 0;
+        border-top: 1px solid var(--line)
+      }
+}
+
+/* ---- rider ---- */
+#view.v-rider{font-size:17px}
+#view.v-rider .wrap{max-width:480px;margin:0 auto;padding:14px}
+#view.v-rider h2.t{font-size:18px;margin:18px 0 8px}
+#view.v-rider #code{width:100%;font-size:26px;letter-spacing:8px;text-align:center;padding:12px;border:2px solid var(--line);border-radius:10px}
+#view.v-rider .b{display:block;width:100%;text-align:center;text-decoration:none;font:inherit;font-weight:700;padding:14px;border:0;border-radius:12px;background:var(--brand);color:#fff;margin-top:10px;cursor:pointer}
+#view.v-rider .b.sec{background:#fff;color:var(--brand);border:2px solid var(--brand)}
+#view.v-rider .err{color:#c92a2a;margin-top:8px}
+#view.v-rider .head{color:#fff;border-radius:14px;padding:14px;margin-bottom:12px}
+#view.v-rider .head b{font-size:22px}
+#view.v-rider .sum{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+#view.v-rider .sum div{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center}
+#view.v-rider .sum span{display:block;font-size:13px;color:var(--mute)}
+#view.v-rider .sum b{font-size:22px}
+#view.v-rider .stop{display:flex;gap:12px;margin-bottom:12px}
+#view.v-rider .num{flex:none;width:38px;height:38px;border-radius:50%;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center}
+#view.v-rider .stop h3{margin:0 0 2px;font-size:18px}
+#view.v-rider .stop p{margin:2px 0;color:var(--mute);font-size:15px}
+#view.v-rider .stop .b{padding:10px;margin-top:8px;font-size:16px}
+#view.v-rider .tag{display:inline-block;background:var(--brand-soft);color:var(--brand);border-radius:8px;padding:2px 8px;font-size:14px;font-weight:700}
+#view.v-rider .wait{text-align:center;padding:30px 10px}
+#view.v-rider .wait .ic{font-size:48px}
+
+</style>
+</head>
+<body>
+<div id="top"></div>
+<div id="view"></div>
+
+<template id="tpl-login">
+<div class="box">
+  <div class="logo"><span class="ic">🛵</span><h1>เส้นทางอร่อย</h1><div class="msg">ระบบจัดเส้นทางและแบ่งงานไรเดอร์</div></div>
+  <div class="card">
+    <div class="roles">
+      <button class="role on" id="rOwner" onclick="setRole('owner')"><span class="ic">🏪</span>เจ้าของร้าน</button>
+      <button class="role" id="rRider" onclick="setRole('rider')"><span class="ic">🛵</span>ไรเดอร์</button>
+    </div>
+
+    <form id="fOwner" onsubmit="loginOwner(event)">
+      <label for="user">ชื่อผู้ใช้</label>
+      <input id="user" autocomplete="username" autofocus>
+      <label for="pass">รหัสผ่าน</label>
+      <input id="pass" type="password" autocomplete="current-password">
+      <button class="go" type="submit">เข้าสู่ระบบ</button>
+    </form>
+
+    <form id="fRider" onsubmit="loginRider(event)" style="display:none">
+      <label for="code">เลขใบงาน 6 หลัก (ที่ร้านแจ้งให้)</label>
+      <input id="code" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="off">
+      <button class="go" type="submit">เข้าสู่ระบบ</button>
+    </form>
+    <div class="err" id="err"></div>
+  </div>
+</div>
+</template>
+
+<template id="tpl-home">
+<main>
+    <div class="hello">
+      <h2>สวัสดีครับ 👋</h2>
+      <p class="msg">เลือกเมนูที่ต้องการใช้งาน</p>
+    </div>
+    <div class="menu">
+      <a class="tile" href="#/customers">
+        <div class="ic">👥</div>
+        <h3>ลูกค้า</h3>
+        <p>จัดการชื่อ เบอร์โทร และพิกัดบ้านลูกค้า ดูตำแหน่งบนแผนที่</p><b id="sCust">&nbsp;</b>
+      </a>
+      <a class="tile" href="#/orders">
+        <div class="ic">📦</div>
+        <h3>ออเดอร์</h3>
+        <p>เพิ่ม ลบ แก้จำนวนกล่อง หรือสุ่มออเดอร์เพื่อทดสอบระบบ</p><b id="sOrder">&nbsp;</b>
+      </a>
+      <a class="tile" href="#/gps">
+        <div class="ic">🗺️</div>
+        <h3>จัดเส้นทางจัดส่ง</h3>
+        <p>ให้ระบบแบ่งงานไรเดอร์ ดูเส้นทางบนแผนที่ และสรุปกำไร/ขาดทุน</p><b>เริ่มจัดเส้นทาง </b>
+      </a>
+      <a class="tile" href="#/rider">
+        <div class="ic">🛵</div>
+        <h3>หน้าจอไรเดอร์</h3>
+        <p>ไรเดอร์กรอกเลขใบงานเพื่อดูลำดับจุดส่งและเปิดแผนที่นำทาง</p><b>เปิดหน้าไรเดอร์ </b>
+      </a>
+    </div>
+  </main>
+</template>
+
+<template id="tpl-customers">
+<main>
+    <section class="card">
+      <h2 id="formTitle">เพิ่มลูกค้าใหม่ <span id="custCount" class="msg"></span></h2>
+      <div class="form">
+        <input id="cFirst" placeholder="ชื่อ"><input id="cLast" placeholder="นามสกุล"><input id="cPhone"
+          placeholder="เบอร์โทร">
+        <input id="cAddr" placeholder="ที่อยู่"><input id="cLat" placeholder="ละติจูด (lat)"><input id="cLng"
+          placeholder="ลองจิจูด (lng)">
+      </div>
+      <div class="row">
+        <button id="cSave" onclick="saveCustomer()">เพิ่มลูกค้า</button>
+        <button class="sec" onclick="resetForm()">ล้างฟอร์ม</button>
+        <input id="cSearch" placeholder="ค้นหาชื่อลูกค้า…" oninput="loadCustomers()">
+        <span class="msg">💡 คลิกบนแผนที่เพื่อกำหนดพิกัดบ้านลูกค้า</span>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button class="sec" onclick="nearbyCustomers()">📍 หาลูกค้าใกล้พิกัดที่เลือก</button>
+        <input id="cRadius" type="number" min="0.1" step="0.1" value="1" style="width:90px"><span>กม.</span>
+        <button class="sec" id="cNearClear" onclick="clearNearby()" style="display:none">แสดงลูกค้าทั้งหมด</button>
+        <span class="msg">ใช้พิกัดจากช่องละติจูด/ลองจิจูด (คลิกบนแผนที่) ถ้าเว้นว่างใช้ตำแหน่งร้าน</span>
+      </div>
+      <div id="cmap"></div>
+    </section>
+    <section class="card">
+      <div class="scroll" style="max-height:360px">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>ชื่อ</th>
+              <th>เบอร์โทร</th>
+              <th>ที่อยู่</th>
+              <th>พิกัด</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</template>
+
+<template id="tpl-orders">
+<main>
+    <section class="card">
+      <h2>จัดการออเดอร์ <span id="orderCount" class="msg"></span></h2>
+      <div class="row" style="margin-bottom:12px">
+        <select id="oCust" style="min-width:220px"></select>
+        <select id="oBoxes">
+          <option>1</option>
+          <option>2</option>
+          <option>3</option>
+        </select><span>กล่อง</span>
+        <button onclick="addOrder()">➕ เพิ่มออเดอร์</button>
+        <span style="flex:1"></span>
+        <input id="simCount" type="number" min="1" max="60" placeholder="จำนวน (ว่าง = สุ่ม 20–30)" style="width:190px">
+        <button class="sec" onclick="simulate()">🎲 สุ่มออเดอร์ทดสอบ</button>
+        <label class="msg" style="display:flex;gap:4px;align-items:center"><input id="delSimCust" type="checkbox"> ลบลูกค้าจำลองด้วย</label>
+        <button class="sec" onclick="clearOrders()">ลบออเดอร์ทั้งหมด</button>
+      </div>
+      <div class="scroll" style="max-height:520px">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>ลูกค้า</th>
+              <th>เบอร์โทร</th>
+              <th>ที่อยู่</th>
+              <th class="n">จำนวน (กล่อง)</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <p class="msg">ลูกค้าสั่งได้ไม่เกิน 3 กล่องต่อออเดอร์ · แก้จำนวนกล่องได้จากช่องในตาราง</p>
+    </section>
+    <section class="card">
+      <h2>ค้นหาออเดอร์ใกล้จุดที่เลือก <span id="nearCount" class="msg"></span></h2>
+      <div class="row" style="margin-bottom:12px">
+        <input id="nLat" type="number" step="any" placeholder="ละติจูด (lat)" style="width:150px">
+        <input id="nLng" type="number" step="any" placeholder="ลองจิจูด (lng)" style="width:150px">
+        <input id="nRadius" type="number" min="0.1" step="0.1" value="2" style="width:90px"><span>กม.</span>
+        <button onclick="nearbyOrders()">📍 ค้นหา</button>
+        <button class="sec" onclick="useCustomerPoint()">ใช้พิกัดบ้านลูกค้าที่เลือกด้านบน</button>
+      </div>
+      <div class="scroll" style="max-height:360px">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>วันที่</th>
+              <th>ลูกค้า</th>
+              <th>เบอร์โทร</th>
+              <th>ที่อยู่</th>
+              <th class="n">กล่อง</th>
+              <th class="n">ห่าง (กม.)</th>
+            </tr>
+          </thead>
+          <tbody id="nearRows"></tbody>
+        </table>
+      </div>
+      <p class="msg">ค้นจากออเดอร์ทุกวัน เรียงจากใกล้ไปไกล · เว้นพิกัดว่างไว้ = ใช้ตำแหน่งร้าน</p>
+    </section>
+  </main>
+</template>
+
+<template id="tpl-gps">
+<main>
+    <section class="card">
+      <h2>จัดเส้นทางจัดส่ง</h2>
+      <div class="row" style="margin-bottom:12px">
+        <button class="big" id="btnPlan" onclick="optimize(true)">คำนวณเส้นทาง</button>
+        <button class="big sec" id="btnMap" onclick="openMap()" disabled>🗺️ ดูแผนที่ขนาดใหญ่</button>
+        <button class="big sec" id="btnClear" onclick="clearPlan()">🧹 ส่งเสร็จแล้ว / ล้างแผน</button>
+        <button class="big sec" onclick="deleteDayPlans()">🗑️ ลบแผนที่ยืนยันทั้งหมดของวันที่เลือก</button>
+      </div>
+      <div id="result">
+        <p class="msg">กด "คำนวณเส้นทาง" เพื่อให้ระบบเสนอเส้นทางจัดส่ง</p>
+      </div>
+    </section>
+
+    <section class="card" id="confirmed" style="display:none">
+      <h2>ยืนยันแผนแล้ว — รหัสงานของไรเดอร์</h2>
+      <button class="sec" onclick="clearPlan()" style="margin-bottom:10px">🧹 ส่งเสร็จแล้ว / ล้างแผน</button>
+      <div id="jobs"></div>
+    </section>
+  </main>
+
+  <div id="mapModal">
+    <div class="mbox">
+      <div class="mhead">
+        <b class="grow" id="mapTitle">แผนที่เส้นทาง</b>
+        <button onclick="optimize(false)" id="btnRe2">🔄 คำนวณใหม่</button>
+        <button class="sec" onclick="closeMap()">ปิด ✕</button>
+      </div>
+      <div class="mbody">
+        <div id="map"></div>
+        <div class="side" id="mapSide"></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="tpl-rider">
+<div class="wrap">
+  <div class="card" id="login">
+    <label>กรอกเลขใบงาน 6 หลัก</label>
+    <input id="code" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="off">
+    <button class="b" onclick="loadFromInput()">ดูใบงาน</button>
+    <div class="err" id="err"></div>
+  </div>
+  <div id="job"></div>
+</div>
+</template>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ตั้งค่าบัญชีเจ้าของร้าน (ใช้เฉพาะตอนเดโม/ทดสอบ)
+// ⚠️ ไฟล์นี้เปิดอ่านได้จากเบราว์เซอร์ ไม่ปลอดภัยสำหรับใช้งานจริง — ของจริงต้องตรวจรหัสผ่านที่ backend
+// ก่อนใช้งานจริงให้เปลี่ยนรหัสผ่านด้านล่าง
+window.AUTH_CONFIG = {
+  owner: { username: "owner", password: "lunch1234" },
+};
+
+const Auth = (function () {
+  const KEY = "auth", TTL = 12 * 60 * 60 * 1000; // อยู่ในระบบ 12 ชั่วโมง
+  const get = () => {
+    try { const a = JSON.parse(localStorage.getItem(KEY)); if (a && a.exp > Date.now()) return a; } catch {}
+    return null;
+  };
+  return {
+    session: get,
+    login(role, extra) { localStorage.setItem(KEY, JSON.stringify({ role, ...extra, exp: Date.now() + TTL })); },
+    logout() { try { localStorage.removeItem(KEY); } catch {} location.replace("#/login"); },
+  };
+})();
+
+// โค้ดที่ทุกหน้าใช้ร่วมกัน: ตัวช่วย, เรียก API, หัวเว็บ + เมนู
+const SHOP = { lat: 16.2469, lng: 103.2522 }; // ตรงกับ CONFIG.shop ใน backend
+const $ = (id) => document.getElementById(id);
+const money = (n) => Number(n).toLocaleString("th-TH", { maximumFractionDigits: 2 }) + " ฿";
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+// ที่อยู่ backend: ใส่ ?api=http://host:port ต่อท้าย URL เพื่อกำหนดเอง (จำไว้ในแท็บนั้น)
+// ไม่ระบุ: เปิดผ่านพอร์ต 3000 หรือโดเมนจริง (เช่น Render) ใช้ origin เดียวกัน ส่วนกรณีอื่น (เปิดเป็นไฟล์ / Live Server) ใช้ http://127.0.0.1:3000
+const API = (() => {
+  try {
+    const q = new URLSearchParams(location.search).get("api");
+    if (q) sessionStorage.setItem("api", q.replace(/\/$/, ""));
+    const saved = sessionStorage.getItem("api");
+    if (saved) return saved;
+  } catch { }
+  const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  return location.protocol.startsWith("http") && (location.port === "3000" || !local) ? location.origin : "http://127.0.0.1:3000"; // ใช้ 127.0.0.1 แทน localhost กัน localhost ไปชนโปรแกรมอื่นที่จองพอร์ต 3000 ฝั่ง IPv6 (::1)
+})();
+const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+
+function toast(t) {
+  let el = $("toast");
+  if (!el) { el = document.createElement("div"); el.id = "toast"; document.body.appendChild(el); }
+  el.textContent = t; el.style.display = "block";
+  clearTimeout(toast.t); toast.t = setTimeout(() => (el.style.display = "none"), 3500);
+}
+
+async function call(path, method = "GET", body) {
+  const r = await fetch(API + path, { method, headers: body ? { "Content-Type": "application/json" } : undefined, body: body ? JSON.stringify(body) : undefined });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.message || j.error || "เกิดข้อผิดพลาด " + r.status);
+  return j;
+}
+
+const PAGES = [
+  ["home", "#/home", "🏠 หน้าหลัก"],
+  ["customers", "#/customers", "👥 ลูกค้า"],
+  ["orders", "#/orders", "📦 ออเดอร์"],
+  ["gps", "#/gps", "🗺️ จัดเส้นทางจัดส่ง"],
+  ["rider", "#/rider", "🛵 หน้าจอไรเดอร์"],
+];
+
+// วาดหัวเว็บ + เมนูลงใน <div id="top">; withDate = มีช่องเลือกวันที่ (เปลี่ยนวันแล้วเรียก onDateChange)
+function renderTop(active, withDate) {
+  $("top").innerHTML = `
+    <header>
+      <h1>🛵 เส้นทางอร่อย <small style="font-weight:400;font-size:13px;opacity:.9">· ระบบจัดเส้นทางและแบ่งงานไรเดอร์</small></h1>
+      ${withDate ? `<label>วันที่ <input id="date" type="date"></label>` : ""}
+      ${Auth.session() ? `<span style="font-size:13px;opacity:.9">${Auth.session().role === "owner" ? "🏪 เจ้าของร้าน" : "🛵 " + esc(Auth.session().name || "ไรเดอร์")}</span><button class="back" onclick="Auth.logout()">ออกจากระบบ</button>` : ""}
+    </header>
+    ${active === "rider" ? "" : `<nav>${PAGES.map(([k, href, label]) => `<a href="${href}" class="${k === active ? "on" : ""}">${label}</a>`).join("")}</nav>`}`;
+  if (withDate) {
+    let d = today();
+    try { d = sessionStorage.getItem("date") || d; } catch { }
+    $("date").value = d;
+    $("date").onchange = () => {
+      try { sessionStorage.setItem("date", $("date").value); } catch { }
+      if (window.onDateChange) onDateChange();
+    };
+  }
+}
+
+function leafletMap(el, center, zoom) {
+  const m = L.map(el).setView(center, zoom);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(m);
+  return m;
+}
+const shopIcon = () => L.divIcon({ className: "", html: `<div class="pin" style="background:#222;width:30px;height:30px;font-size:16px">🏪</div>`, iconSize: [30, 30], iconAnchor: [15, 15] });
+
+
+/* ======================= หน้า: login ======================= */
+function mount_login() {
+
+const params = hashParams();
+
+// ล็อกอินอยู่แล้ว → ไปหน้าของตัวเองเลย
+const cur = Auth.session();
+if (cur) { go(cur.role === "owner" ? (params.get("next") || "home") : "rider"); return; }
+
+function setRole(r) {
+  $("rOwner").classList.toggle("on", r === "owner");
+  $("rRider").classList.toggle("on", r === "rider");
+  $("fOwner").style.display = r === "owner" ? "" : "none";
+  $("fRider").style.display = r === "rider" ? "" : "none";
+  $("err").textContent = "";
+  $(r === "owner" ? "user" : "code").focus();
+}
+
+function loginOwner(e) {
+  e.preventDefault();
+  const o = (window.AUTH_CONFIG || {}).owner || {};
+  if ($("user").value.trim() === o.username && $("pass").value === o.password) {
+    Auth.login("owner", { name: "เจ้าของร้าน" });
+    const next = params.get("next");
+    go(next && /^[\w-]+$/.test(next) ? next : "home");
+  } else { $("err").textContent = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"; }
+}
+
+async function loginRider(e) {
+  e.preventDefault();
+  const code = $("code").value.trim();
+  if (!/^\d{6}$/.test(code)) { $("err").textContent = "เลขใบงานต้องเป็นตัวเลข 6 หลัก"; return; }
+  try {
+    const job = await call("/job/" + code); // ให้ backend ตรวจว่ามีเลขใบงานนี้จริง
+    Auth.login("rider", { code, name: "ไรเดอร์คนที่ " + job.riderNo });
+    go("rider");
+  } catch (er) { $("err").textContent = /not found/i.test(er.message) ? "ไม่พบเลขใบงานนี้ ตรวจเลขอีกครั้ง" : er.message; }
+}
+Object.assign(window, { setRole, loginOwner, loginRider });
+
+}
+
+/* ======================= หน้า: home ======================= */
+function mount_home() {
+
+    renderTop("home", false);
+    (async () => {
+      try {
+        const [cs, os] = await Promise.all([call("/customer"), call("/order?date=" + today())]);
+        $("sCust").textContent = `ลูกค้าทั้งหมด ${cs.length} คน`;
+        $("sOrder").textContent = `วันนี้ ${os.length} ออเดอร์ · ${os.reduce((s, o) => s + o.boxes, 0)} กล่อง`;
+      } catch { $("sCust").textContent = ""; $("sOrder").textContent = ""; }
+    })();
+
+
+}
+
+/* ======================= หน้า: customers ======================= */
+function mount_customers() {
+
+    renderTop("customers", false);
+    let cmap = leafletMap("cmap", [SHOP.lat, SHOP.lng], 13), layer = L.layerGroup().addTo(cmap), pick, editingId = null, list = [], nearby = null;
+
+    cmap.on("click", (e) => {
+      $("cLat").value = e.latlng.lat.toFixed(6); $("cLng").value = e.latlng.lng.toFixed(6);
+      if (pick) pick.remove();
+      pick = L.marker(e.latlng).addTo(cmap).bindTooltip("พิกัดที่เลือก").openTooltip();
+    });
+
+    async function loadCustomers() {
+      try {
+        const q = $("cSearch").value.trim();
+        if (q && nearby) { nearby = null; $("cNearClear").style.display = "none"; }
+        list = await call(nearby ? `/customer/nearby?lat=${nearby.lat}&lng=${nearby.lng}&radius=${nearby.radius}` : "/customer" + (q ? "?name=" + encodeURIComponent(q) : ""));
+        $("custCount").textContent = nearby ? `(ในรัศมี ${nearby.radius} กม. พบ ${list.length} คน)` : `(${list.length} คน)`;
+        $("rows").innerHTML = list.map((c) => `<tr><td>${c.id}</td><td>${esc(c.firstname)} ${esc(c.lastname)}</td><td>${esc(c.phone)}</td><td>${esc(c.address)}</td>
+      <td>${Number(c.lat).toFixed(4)}, ${Number(c.lng).toFixed(4)}${c.distance_km !== undefined ? ` · ห่าง ${c.distance_km} กม.` : ""}</td>
+      <td><button class="sec" onclick="focusOn(${c.id})">📍 ดูบนแผนที่</button> <button class="sec" onclick="edit(${c.id})">แก้ไข</button> <button class="sec" onclick="del(${c.id})">🗑️ ลบ</button></td></tr>`).join("")
+          || `<tr><td colspan="6" class="msg">${nearby ? "ไม่มีลูกค้าในรัศมีนี้" : "ไม่พบลูกค้า"}</td></tr>`;
+        layer.clearLayers();
+        L.marker([SHOP.lat, SHOP.lng], { icon: shopIcon() }).bindTooltip("ร้าน").addTo(layer);
+        list.forEach((c) => L.circleMarker([c.lat, c.lng], { radius: 7, color: "#fff", weight: 2, fillColor: getComputedStyle(document.documentElement).getPropertyValue("--brand").trim(), fillOpacity: 1 })
+          .bindPopup(`<b>${esc(c.firstname)} ${esc(c.lastname)}</b><br>${esc(c.phone)}<br>${esc(c.address)}`).addTo(layer));
+        if (nearby) {
+          const ring = L.circle([nearby.lat, nearby.lng], { radius: nearby.radius * 1000, color: "#e03131", weight: 2, fillOpacity: 0.05 }).addTo(layer);
+          cmap.fitBounds(ring.getBounds(), { padding: [20, 20] });
+        } else if (list.length) cmap.fitBounds([[SHOP.lat, SHOP.lng], ...list.map((c) => [c.lat, c.lng])], { padding: [30, 30] });
+      } catch (e) { toast("โหลดลูกค้าไม่ได้: " + e.message); }
+    }
+    function nearbyCustomers() {
+      const empty = $("cLat").value.trim() === "" && $("cLng").value.trim() === "";
+      const lat = empty ? SHOP.lat : Number($("cLat").value), lng = empty ? SHOP.lng : Number($("cLng").value), radius = Number($("cRadius").value);
+      if (isNaN(lat) || isNaN(lng) || !(radius > 0)) { toast("พิกัดและรัศมีต้องเป็นตัวเลข (รัศมีมากกว่า 0)"); return; }
+      nearby = { lat, lng, radius };
+      $("cSearch").value = ""; $("cNearClear").style.display = "";
+      loadCustomers();
+    }
+    function clearNearby() { nearby = null; $("cNearClear").style.display = "none"; loadCustomers(); }
+    async function del(id) {
+      const c = list.find((x) => x.id === id); if (!c) return;
+      if (!confirm(`ลบลูกค้า ${c.firstname} ${c.lastname}?`)) return;
+      try {
+        await call("/customer/" + id, "DELETE");
+      } catch (e) {
+        const n = (/has (\d+) order/.exec(e.message) || [])[1];
+        if (!n) { toast(e.message); return; }
+        if (!confirm(`ลูกค้าคนนี้มี ${n} ออเดอร์อยู่ ลบออเดอร์ของเขาไปพร้อมกันเลยไหม?`)) return;
+        try { await call("/customer/" + id + "?force=true", "DELETE"); } catch (e2) { toast(e2.message); return; }
+      }
+      toast("ลบลูกค้าแล้ว");
+      if (editingId === id) resetForm();
+      loadCustomers();
+    }
+    function focusOn(id) {
+      const c = list.find((x) => x.id === id); if (!c) return;
+      cmap.setView([c.lat, c.lng], 16);
+      L.popup().setLatLng([c.lat, c.lng]).setContent(`<b>${esc(c.firstname)} ${esc(c.lastname)}</b><br>${esc(c.address)}`).openOn(cmap);
+      $("cmap").scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    function edit(id) {
+      const c = list.find((x) => x.id === id); if (!c) return;
+      editingId = id;
+      $("cFirst").value = c.firstname; $("cLast").value = c.lastname; $("cPhone").value = c.phone;
+      $("cAddr").value = c.address; $("cLat").value = c.lat; $("cLng").value = c.lng;
+      $("cSave").textContent = "บันทึกการแก้ไข"; $("formTitle").firstChild.textContent = "แก้ไขลูกค้า #" + id + " ";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    function resetForm() {
+      editingId = null;
+      ["cFirst", "cLast", "cPhone", "cAddr", "cLat", "cLng"].forEach((i) => ($(i).value = ""));
+      $("cSave").textContent = "เพิ่มลูกค้า"; $("formTitle").firstChild.textContent = "เพิ่มลูกค้าใหม่ ";
+      if (pick) { pick.remove(); pick = null; }
+    }
+    async function saveCustomer() {
+      const body = { firstname: $("cFirst").value.trim(), lastname: $("cLast").value.trim(), phone: $("cPhone").value.trim(), address: $("cAddr").value.trim(), lat: Number($("cLat").value), lng: Number($("cLng").value) };
+      if (!body.firstname || !body.lastname || !body.phone || !$("cLat").value || !$("cLng").value || isNaN(body.lat) || isNaN(body.lng)) { toast("กรอกชื่อ นามสกุล เบอร์ และพิกัด (คลิกบนแผนที่) ให้ครบ"); return; }
+      try {
+        await call(editingId ? "/customer/" + editingId : "/customer", editingId ? "PUT" : "POST", body);
+        toast(editingId ? "แก้ไขลูกค้าแล้ว" : "เพิ่มลูกค้าแล้ว");
+        resetForm(); loadCustomers();
+      } catch (e) { toast(e.message); }
+    }
+    loadCustomers();
+Object.assign(window, { saveCustomer, resetForm, loadCustomers, nearbyCustomers, clearNearby, focusOn, edit, del });
+return () => { cmap.remove(); };
+}
+
+/* ======================= หน้า: orders ======================= */
+function mount_orders() {
+
+    renderTop("orders", true);
+    window.onDateChange = loadOrders;
+    let customers = [];
+
+    async function loadOrders() {
+      try {
+        const [rows, cs] = await Promise.all([call("/order?date=" + $("date").value), call("/customer")]);
+        customers = cs;
+        const keep = $("oCust").value;
+        $("oCust").innerHTML = cs.map((c) => `<option value="${c.id}">${esc(c.firstname)} ${esc(c.lastname)} (${esc(c.phone)})</option>`).join("");
+        if (keep) $("oCust").value = keep;
+        $("orderCount").textContent = `(${rows.length} ออเดอร์, ${rows.reduce((s, o) => s + o.boxes, 0)} กล่อง)`;
+        $("rows").innerHTML = rows.length
+          ? rows.map((o) => `<tr><td>${o.id}</td><td>${esc(o.firstname)} ${esc(o.lastname)}</td><td>${esc(o.phone)}</td><td>${esc(o.address)}</td>
+          <td class="n"><select onchange="editBoxes(${o.id}, Number(this.value))">${[1, 2, 3].map((n) => `<option ${n === o.boxes ? "selected" : ""}>${n}</option>`).join("")}</select></td>
+          <td><button class="sec" onclick="delOrder(${o.id})">🗑️ ลบ</button></td></tr>`).join("")
+          : `<tr><td colspan="6" class="msg">ยังไม่มีออเดอร์ในวันนี้ — เพิ่มเองหรือกด "สุ่มออเดอร์ทดสอบ"</td></tr>`;
+      } catch (e) { toast("โหลดออเดอร์ไม่ได้: " + e.message); }
+    }
+    async function addOrder() {
+      if (!$("oCust").value) { toast("ยังไม่มีลูกค้า — เพิ่มลูกค้าก่อน"); return; }
+      try { await call("/order", "POST", { customerId: Number($("oCust").value), boxes: Number($("oBoxes").value), date: $("date").value }); toast("เพิ่มออเดอร์แล้ว"); loadOrders(); } catch (e) { toast(e.message); }
+    }
+    async function editBoxes(id, boxes) {
+      try { await call("/order/" + id, "PUT", { boxes }); toast("แก้จำนวนกล่องแล้ว"); loadOrders(); } catch (e) { toast(e.message); }
+    }
+    async function delOrder(id) {
+      try { await call("/order/" + id, "DELETE"); loadOrders(); } catch (e) { toast(e.message); }
+    }
+    async function simulate() {
+      const n = $("simCount").value.trim();
+      try {
+        const r = await call("/order/simulate", "POST", { date: $("date").value, ...(n ? { count: Number(n) } : {}) });
+        toast(`สุ่มออเดอร์แล้ว ${r.created} รายการ`); loadOrders();
+      } catch (e) { toast(e.message); }
+    }
+    async function clearOrders() {
+      const withCust = $("delSimCust").checked;
+      if (!confirm("ลบออเดอร์ทั้งหมดในระบบ (ทุกวัน)" + (withCust ? " และลูกค้าจำลองที่ระบบสร้างไว้" : "") + "?")) return;
+      try {
+        const r = await call("/order/simulate" + (withCust ? "?customers=true" : ""), "DELETE");
+        toast(`ลบออเดอร์ ${r.deleted_orders} รายการ` + (withCust ? ` และลูกค้าจำลอง ${r.deleted_customers} คน` : "")); loadOrders();
+      } catch (e) { toast(e.message); }
+    }
+    function useCustomerPoint() {
+      const c = customers.find((x) => String(x.id) === $("oCust").value);
+      if (!c) { toast("เลือกลูกค้าด้านบนก่อน"); return; }
+      $("nLat").value = c.lat; $("nLng").value = c.lng;
+    }
+    async function nearbyOrders() {
+      const empty = $("nLat").value.trim() === "" && $("nLng").value.trim() === "";
+      const lat = empty ? SHOP.lat : Number($("nLat").value), lng = empty ? SHOP.lng : Number($("nLng").value), radius = Number($("nRadius").value);
+      if (isNaN(lat) || isNaN(lng) || !(radius > 0)) { toast("พิกัดและรัศมีต้องเป็นตัวเลข (รัศมีมากกว่า 0)"); return; }
+      try {
+        const rows = await call(`/order/nearby?lat=${lat}&lng=${lng}&radius=${radius}`);
+        $("nearCount").textContent = `(รัศมี ${radius} กม. พบ ${rows.length} ออเดอร์, ${rows.reduce((s, o) => s + o.boxes, 0)} กล่อง)`;
+        $("nearRows").innerHTML = rows.map((o) => `<tr><td>${o.id}</td><td>${esc(o.order_date)}</td><td>${esc(o.firstname)} ${esc(o.lastname)}</td><td>${esc(o.phone)}</td><td>${esc(o.address)}</td><td class="n">${o.boxes}</td><td class="n">${o.distance_km}</td></tr>`).join("")
+          || `<tr><td colspan="7" class="msg">ไม่มีออเดอร์ในรัศมีนี้</td></tr>`;
+      } catch (e) { toast(e.message); }
+    }
+    loadOrders();
+Object.assign(window, { addOrder, simulate, clearOrders, nearbyOrders, useCustomerPoint, editBoxes, delOrder });
+
+}
+
+/* ======================= หน้า: gps ======================= */
+function mount_gps() {
+
+    renderTop("gps", true);
+    window.onDateChange = async () => { await loadOrders(); restoreState(); };
+
+    let data = null;      // ผลล่าสุดจาก /route/optimize (แผนที่ดีที่สุดแผนเดียว)
+    let map, layer;
+    let confirmedPlan = null, mapOpen = false, ordersSig = "";
+
+    /* ---------- จำสถานะไว้ (รีเฟรชแล้วหน้ายังเหมือนเดิม) ---------- */
+    const KEY = "gpsState";
+    const allState = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } };
+    function saveState() {
+      try {
+        const all = allState(), d = $("date").value;
+        if (data) all[d] = { data, confirmedPlan, mapOpen, sig: ordersSig }; else delete all[d];
+        localStorage.setItem(KEY, JSON.stringify(all));
+      } catch { }
+    }
+    function restoreState() {
+      const s = allState()[$("date").value];
+      if (!s || !s.data || !s.data.riders) return;
+      if (s.sig !== ordersSig) { toast("ออเดอร์เปลี่ยนไปจากตอนคำนวณ จึงต้องคำนวณเส้นทางใหม่"); saveStateClear(); return; }
+      data = s.data; confirmedPlan = s.confirmedPlan;
+      seen.clear(); seen.add(planSig(data));
+      $("btnMap").disabled = false;
+      render();
+      if (confirmedPlan) showPlan(confirmedPlan);
+      if (s.mapOpen) openMap();
+    }
+    function saveStateClear() { try { const all = allState(); delete all[$("date").value]; localStorage.setItem(KEY, JSON.stringify(all)); } catch { } }
+
+    /* ---------- โหลดออเดอร์ของวัน (จากหน้าจัดการออเดอร์) ---------- */
+    async function loadOrders() {
+      try {
+        const rows = await call("/order?date=" + $("date").value);
+        ordersSig = rows.map((o) => o.id + ":" + o.boxes).join(",");
+        data = null; confirmedPlan = null; recalcNote = null; recalcCount = 0; seen.clear(); $("btnMap").disabled = true;
+        $("mapModal").classList.remove("open"); mapOpen = false; $("confirmed").style.display = "none";
+        $("result").innerHTML = `<p class="msg">วันนี้มี ${rows.length} ออเดอร์ (${rows.reduce((s, o) => s + o.boxes, 0)} กล่อง) · กด "คำนวณเส้นทาง" เพื่อให้ระบบเสนอเส้นทางจัดส่ง</p>`;
+      } catch (e) { toast("โหลดออเดอร์ไม่ได้: " + e.message); }
+    }
+
+    /* ---------- คำนวณเส้นทาง ---------- */
+    let recalcNote = null, recalcCount = 0;
+    const RECALC_TRIES = 6;
+    // seed ที่ไม่ลงท้ายด้วย 0 ทำให้ backend ค้นหาน้อยลง ได้แผนหลากหลายขึ้น (ยืนยันแผนด้วย seed เดิมแล้วได้แผนเดียวกับที่เห็น)
+    const variantSeed = () => Math.floor(Math.random() * 190000000) * 10 + 1 + Math.floor(Math.random() * 9);
+    const seen = new Set();   // แผนที่เคยเสนอไปแล้วของวันนี้ (คำนวณใหม่แล้วจะไม่ได้แผนซ้ำ)
+    const planSig = (p) => p.riders.map((r) => r.stops.map((s) => s.orderId).join(">")).sort().join("|");
+
+    // เทียบแผนใหม่กับแผนก่อนหน้า เพื่อบอกผู้ใช้ว่าคำนวณใหม่แล้วเปลี่ยนไปอย่างไร
+    function noteRecalc(prev, cur, tried = 0, cands = 0, none = false) {
+      if (!prev) { recalcNote = null; return; }
+      recalcCount++;
+      const a = prev.summary, b = cur.summary;
+      const delta = (x, y) => Math.round((y - x) * 100) / 100;
+      recalcNote = {
+        n: recalcCount, seed: cur.seed, none, tried, cands, time: new Date().toLocaleTimeString("th-TH", { hour12: false }),
+        changes: [
+          ["กำไร", delta(a.profit, b.profit), 1, (v) => money(v)],
+          ["ค่าจ้างไรเดอร์", delta(a.riderCost, b.riderCost), -1, (v) => money(v)],
+          ["ระยะทางรวม", delta(a.totalKm, b.totalKm), -1, (v) => v.toFixed(2) + " กม."],
+          ["ไรเดอร์", delta(a.riders, b.riders), 0, (v) => v + " คน"],
+        ],
+      };
+    }
+    function recalcNoteHTML() {
+      if (!recalcNote) return "";
+      const n = recalcNote;
+      const chips = n.none
+        ? `<span class="chip">ลอง ${n.tried} แผน ยังไม่พบแผนใหม่ที่ยังกำไรและไม่เลท — คงแผนเดิมไว้</span>`
+        : n.tried && n.changes.every((c) => c[1] === 0)
+        ? `<span class="chip up">ได้แผนใหม่ — กำไรและระยะทางเท่าเดิม แต่จัดไรเดอร์/ลำดับส่งต่างกัน</span>`
+        : n.changes.map(([label, d, good, fmt]) => {
+          if (d === 0) return `<span class="chip">${label} เท่าเดิม</span>`;
+          const cls = good === 0 ? "" : d * good > 0 ? "up" : "down";
+          return `<span class="chip ${cls}">${label} ${d > 0 ? "+" : "−"}${fmt(Math.abs(d))}</span>`;
+        }).join("");
+      const how = n.tried && !n.none ? `<div class="msg" style="margin-top:4px">เลือกแผนกำไรสูงสุดจาก ${n.cands} แผนใหม่ที่ไม่ซ้ำ ไม่ขาดทุน ไม่เลท (ลอง ${n.tried} แผน)</div>` : "";
+      return `<div class="recalc"><b>🔄 คำนวณใหม่แล้ว</b> · ครั้งที่ ${n.n} · ${n.time} <span class="msg">(seed ${n.seed})</span><div class="chips">${chips}</div>${how}</div>`;
+    }
+    function flash(el) { el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); }
+    function setBusy(on) {
+      [$("btnPlan"), $("btnRe2"), ...document.querySelectorAll(".btnRe")].forEach((b) => {
+        if (b.dataset.label === undefined) b.dataset.label = b.textContent;
+        b.disabled = on; b.textContent = on ? "⏳ กำลังคำนวณ…" : b.dataset.label;
+      });
+    }
+
+    async function optimize(openAfter, seed) {
+      const prev = data, date = $("date").value;
+      setBusy(true);
+      try {
+        let next, tried = 1, cands = 0;
+        if (!prev || seed) {
+          next = await call("/route/optimize", "POST", { date, ...(seed ? { seed } : {}) });
+        } else {
+          // คำนวณใหม่: ลองหลายแผนพร้อมกัน เอาเฉพาะแผนที่ยังไม่เคยเสนอ ไม่ขาดทุน ไม่เลทเพิ่ม แล้วเลือกอันที่กำไรสูงสุด
+          const res = await Promise.allSettled(Array.from({ length: RECALC_TRIES }, () => call("/route/optimize", "POST", { date, seed: variantSeed() })));
+          const plans = res.filter((r) => r.status === "fulfilled").map((r) => r.value);
+          if (!plans.length) throw res[0].reason;
+          tried = plans.length;
+          if (!plans[0].riders.length) next = plans[0];
+          else {
+            const floor = Math.min(0, prev.summary.profit);
+            const fresh = plans.filter((p) => !seen.has(planSig(p)) && p.summary.profit >= floor && p.summary.lateCount <= prev.summary.lateCount);
+            cands = fresh.length;
+            next = fresh.sort((a, b) => b.summary.profit - a.summary.profit)[0] || null;
+          }
+        }
+        if (next && !next.riders.length) { toast("ไม่มีออเดอร์ในวันนี้"); data = null; recalcNote = null; $("btnMap").disabled = true; return; }
+        if (!next) {
+          seen.clear(); seen.add(planSig(prev));
+          noteRecalc(prev, prev, tried, 0, true);
+          render(); flash($("result")); flash($("mapSide"));
+          toast("ไม่พบแผนใหม่ที่ยังกำไร — คงแผนเดิมไว้");
+          return;
+        }
+        data = next; seen.add(planSig(data));
+        noteRecalc(prev, data, prev ? tried : 0, cands);
+        $("btnMap").disabled = false;
+        render();
+        flash($("result")); flash($("mapSide"));
+        if (recalcNote) toast("คำนวณใหม่แล้ว — ได้แผนใหม่ที่ยังกำไร ดูรายละเอียดที่แถบด้านบน");
+        saveState();
+        if (openAfter) openMap(); else drawMap();
+      } catch (e) { toast(e.message); }
+      finally { setBusy(false); }
+    }
+
+    // ค้นหาแผนที่ไม่ขาดทุน: สุ่ม seed ใหม่ซ้ำ ๆ จนกว่าจะมีตัวเลือกที่กำไร >= 0
+    async function reoptimizeNoLoss() {
+      const btns = [...document.querySelectorAll(".btnNoLoss")], prev = data;
+      btns.forEach((b) => (b.disabled = true));
+      try {
+        let best = null;
+        for (let i = 1; i <= 15; i++) {
+          toast(`กำลังหาเส้นทางที่ไม่ขาดทุน… (${i}/15)`);
+          const d = await call("/route/optimize", "POST", { date: $("date").value });
+          if (!best || d.summary.profit > best.summary.profit) best = d;
+          if (best.summary.profit >= 0) break;
+        }
+        data = best; seen.add(planSig(data)); noteRecalc(prev, data); render(); flash($("result")); drawMap(); saveState();
+        toast(best.summary.profit >= 0 ? "พบเส้นทางที่ไม่ขาดทุนแล้ว" : "ลองแล้วยังขาดทุน — ที่ดีที่สุดคือขาดทุนน้อยสุดที่แสดงอยู่");
+      } catch (e) { toast(e.message); }
+      finally { btns.forEach((b) => (b.disabled = false)); }
+    }
+
+    /* ---------- แสดงผลสรุป ---------- */
+    function summaryHTML(o) {
+      const s = o.summary, loss = s.profit < 0;
+      return `
+  ${loss ? `<div class="alert">⚠️ แผนนี้ <b>ขาดทุน ${money(-s.profit)}</b> (ค่าไรเดอร์สูงกว่ากำไรจากอาหาร)
+    <div style="margin-top:8px"><button class="btnNoLoss" onclick="reoptimizeNoLoss()">คำนวณเส้นทางใหม่ให้ไม่ขาดทุน</button></div></div>` : ""}
+  ${s.lateCount ? `<div class="alert warn">⏰ มี ${s.lateCount} จุดที่ถึงช้ากว่ากำหนด 12:30</div>` : ""}
+  <div class="stats">
+    <div class="stat"><span>รายได้</span><b>${money(s.revenue)}</b></div>
+    <div class="stat"><span>ต้นทุนอาหาร</span><b>${money(s.foodCost)}</b></div>
+    <div class="stat"><span>ค่าจ้างไรเดอร์</span><b>${money(s.riderCost)}</b></div>
+    <div class="stat ${loss ? "loss" : ""}"><span>${loss ? "ขาดทุน" : "กำไร"}</span><b class="profit ${loss ? "neg" : "pos"}">${money(s.profit)}</b></div>
+    <div class="stat"><span>เวลาที่ใช้ส่ง</span><b>${Math.round(s.durationMin)} นาที</b><span>เสร็จ ${s.finishTime}</span></div>
+    <div class="stat"><span>ไรเดอร์ / ระยะทางรวม</span><b>${s.riders} คน · ${s.totalKm} กม.</b></div>
+  </div>`;
+    }
+    function ridersTable(o) {
+      return `<table><thead><tr><th>ไรเดอร์</th><th class="n">กล่อง</th><th class="n">กม.</th><th class="n">ค่าจ้าง</th><th class="n">เสร็จ</th></tr></thead><tbody>${o.riders.map((r) =>
+        `<tr><td><span class="dot" style="background:${r.color}"></span>คนที่ ${r.riderNo}${r.lateCount ? " ⏰" : ""}</td><td class="n">${r.boxes}</td><td class="n">${r.km}</td><td class="n">${money(r.fee)}</td><td class="n">${r.finishTime}</td></tr>`).join("")}</tbody></table>`;
+    }
+    function render() {
+      $("result").innerHTML = `
+    ${recalcNoteHTML()}${summaryHTML(data)}${ridersTable(data)}
+    <div class="row" style="margin-top:14px">
+      <button class="sec btnRe" onclick="optimize(false)">🔄 คำนวณใหม่ / เสนอเส้นทางอื่น</button>
+      <button class="sec" onclick="openMap()">🗺️ ดูแผนที่ขนาดใหญ่</button>
+      <button onclick="confirmPlan()">✅ ยืนยันแผนนี้</button>
+    </div>`;
+      renderSide();
+    }
+
+    function renderSide() {
+      if (!data) return;
+      $("mapSide").innerHTML = `${recalcNoteHTML()}${summaryHTML(data)}
+    <div class="legend"><b>สีเส้นทาง</b> <span class="msg">(เส้นประ = กำลังโหลดเส้นทางถนน)</span>${data.riders.map((r) => `<div><span class="dot" style="background:${r.color}"></span>ไรเดอร์คนที่ ${r.riderNo}: ${r.stops.length} จุด · ${r.km} กม. · ถึง ${r.finishTime}</div>`).join("")}</div>`;
+    }
+
+    /* ---------- แผนที่ ---------- */
+    function openMap() {
+      if (!data) return;
+      $("mapModal").classList.add("open"); mapOpen = true; saveState();
+      if (!map) {
+        map = L.map("map");
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
+        layer = L.layerGroup().addTo(map);
+      }
+      setTimeout(() => { map.invalidateSize(); drawMap(); }, 50);
+    }
+    function closeMap() { $("mapModal").classList.remove("open"); mapOpen = false; saveState(); }
+    const onEsc = (e) => e.key === "Escape" && closeMap();
+    document.addEventListener("keydown", onEsc);
+
+    let drawToken = 0;
+    const roadCache = new Map();
+    // ขอเส้นทางตามถนนจริงจาก OSRM (บริการสาธารณะฟรี) คืน null ถ้าขอไม่ได้ จะใช้เส้นตรงแทน
+    async function roadRoute(pts) {
+      const key = pts.map((p) => p.join(",")).join(";");
+      if (!roadCache.has(key)) {
+        roadCache.set(key, fetch("https://router.project-osrm.org/route/v1/driving/" + pts.map((p) => p[1] + "," + p[0]).join(";") + "?overview=full&geometries=geojson")
+          .then((r) => r.json())
+          .then((j) => (j.routes?.[0] ? j.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]) : null))
+          .catch(() => null));
+      }
+      return roadCache.get(key);
+    }
+
+    function drawMap() {
+      if (!map || !data) return;
+      const token = ++drawToken;
+      renderSide();
+      layer.clearLayers();
+      const all = [[SHOP.lat, SHOP.lng]];
+      L.marker([SHOP.lat, SHOP.lng], { icon: L.divIcon({ className: "", html: `<div class="pin" style="background:#222;width:30px;height:30px;font-size:16px">🏪</div>`, iconSize: [30, 30], iconAnchor: [15, 15] }) }).bindTooltip("ร้าน").addTo(layer);
+      data.riders.forEach((r) => {
+        const pts = [[SHOP.lat, SHOP.lng], ...r.stops.map((s) => [s.lat, s.lng])];
+        // วาดเส้นตรงบาง ๆ ไปก่อน แล้วเปลี่ยนเป็นเส้นตามถนนจริงเมื่อ OSRM ตอบกลับ
+        const fallback = L.polyline(pts, { color: r.color, weight: 3, opacity: 0.6, dashArray: "6 8" }).addTo(layer);
+        roadRoute(pts).then((road) => {
+          if (token !== drawToken || !road) return;
+          fallback.remove();
+          L.polyline(road, { color: r.color, weight: 5, opacity: 0.9 }).addTo(layer);
+        });
+        r.stops.forEach((s, i) => {
+          all.push([s.lat, s.lng]);
+          L.marker([s.lat, s.lng], { icon: L.divIcon({ className: "", html: `<div class="pin" style="background:${r.color}">${i + 1}</div>`, iconSize: [24, 24], iconAnchor: [12, 12] }) })
+            .bindPopup(`<b>ไรเดอร์คนที่ ${r.riderNo} · จุดที่ ${i + 1}</b><br>${esc(s.name)} (${esc(s.phone)})<br>${esc(s.address)}<br>${s.boxes} กล่อง · ถึง ${r.arrivals[i]}`)
+            .addTo(layer);
+        });
+      });
+      map.invalidateSize();
+      map.fitBounds(all, { padding: [40, 40] });
+    }
+
+    /* ---------- ล้างแผน (หลังส่งเสร็จ) ---------- */
+// ถ้ายืนยันแผนไว้แล้ว จะลบแผนนั้นออกจากระบบด้วย (เลขใบงานใช้ไม่ได้) ออเดอร์ไม่ถูกลบ
+async function clearPlan() {
+  const saved = confirmedPlan;
+  if (!confirm(saved ? "ล้างแผนนี้? แผนที่ยืนยันแล้วจะถูกลบออกจากระบบ และเลขใบงานของไรเดอร์จะใช้ไม่ได้ (ออเดอร์ยังอยู่ ไม่ถูกลบ)" : "ล้างแผนที่คำนวณไว้ในหน้านี้? (ออเดอร์ในระบบยังอยู่ ไม่ถูกลบ)")) return;
+  if (saved) {
+    try { await call("/route/plan/" + saved.planId, "DELETE"); }
+    catch (e) { if (!/not found/i.test(e.message)) { toast(e.message); return; } }
+  }
+  saveStateClear();
+  closeMapQuiet();
+  loadOrders();
+  toast("ล้างแผนแล้ว พร้อมจัดเส้นทางรอบใหม่");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+function closeMapQuiet() { $("mapModal").classList.remove("open"); mapOpen = false; if (layer) layer.clearLayers(); }
+
+// ลบทุกแผนที่ยืนยันไว้ของวันที่เลือก (รวมที่ยืนยันจากเครื่องอื่น) ออเดอร์ไม่ถูกลบ
+async function deleteDayPlans() {
+  const d = $("date").value;
+  if (!confirm(`ลบแผนที่ยืนยันไว้ทั้งหมดของวันที่ ${d}? เลขใบงานของวันนั้นจะใช้ไม่ได้ (ออเดอร์ไม่ถูกลบ)`)) return;
+  try {
+    const r = await call("/route/plan?date=" + encodeURIComponent(d), "DELETE");
+    saveStateClear(); closeMapQuiet(); await loadOrders();
+    toast(r.affected_row ? `ลบแผนของวันที่ ${d} แล้ว ${r.affected_row} แผน` : "วันที่เลือกไม่มีแผนที่ยืนยันไว้");
+  } catch (e) { toast(e.message); }
+}
+
+/* ---------- ยืนยันแผน ---------- */
+    function showPlan(r) {
+      $("confirmed").style.display = "";
+      $("jobs").innerHTML = `<p class="msg">แผน #${r.planId} · ${r.summary.riders} ไรเดอร์ · กำไร ${money(r.summary.profit)}</p>` +
+        `<table><thead><tr><th>ไรเดอร์</th><th>เลขใบงาน</th><th class="n">กล่อง</th><th class="n">เสร็จ</th></tr></thead><tbody>${r.riders.map((x) =>
+          `<tr><td><span class="dot" style="background:${x.color}"></span>คนที่ ${x.riderNo}</td><td><b style="font-size:18px;letter-spacing:2px">${esc(x.code)}</b></td><td class="n">${x.boxes}</td><td class="n">${x.finishTime}</td></tr>`).join("")}</tbody></table>`;
+    }
+    // กด "ยืนยันแผนนี้" → บันทึกแผนและออกเลขใบงาน 6 หลักให้ไรเดอร์แต่ละคน
+    async function confirmPlan() {
+      if (data.summary.profit < 0 && !confirm("แผนนี้ขาดทุน ต้องการยืนยันจริงหรือไม่?")) return;
+      try {
+        const r = await call("/route/plan", "POST", { date: data.date, seed: data.seed });
+        confirmedPlan = r; showPlan(r); saveState();
+        toast("ยืนยันแผนแล้ว แจ้งเลขใบงานให้ไรเดอร์แต่ละคน");
+        $("confirmed").scrollIntoView({ behavior: "smooth" });
+      } catch (e) { toast(e.message); }
+    }
+
+    loadOrders().then(restoreState);
+Object.assign(window, { optimize, openMap, clearPlan, deleteDayPlans, closeMap, reoptimizeNoLoss, confirmPlan });
+return () => { document.removeEventListener("keydown", onEsc); if (map) map.remove(); };
+}
+
+/* ======================= หน้า: rider ======================= */
+function mount_rider() {
+
+renderTop("rider", false);
+
+// ไรเดอร์: ใช้เลขใบงานจากตอนล็อกอินเท่านั้น (ดูงานคนอื่นไม่ได้) / เจ้าของร้าน: กรอกเลขหรือใส่ ?code= เพื่อดูแทนได้
+const S = Auth.session();
+const isRider = S && S.role === "rider";
+let current = isRider ? S.code : hashParams().get("code");
+let lastJson = "";
+
+function loadFromInput() {
+  const c = $("code").value.trim();
+  $("err").textContent = "";
+  if (!/^\d{6}$/.test(c)) { $("err").textContent = "เลขต้องเป็นตัวเลข 6 หลัก"; return; }
+  current = c; lastJson = ""; refresh(true);
+}
+
+async function refresh(manual) {
+  if (!current) return;
+  try {
+    const j = await call("/job/" + current);
+    const json = JSON.stringify(j);
+    if (json === lastJson) return; // ไม่มีอะไรเปลี่ยน ไม่ต้องวาดใหม่
+    lastJson = json;
+    $("login").style.display = "none";
+    show(j);
+    if (!isRider) history.replaceState(null, "", "#/rider?code=" + current);
+  } catch (e) {
+    if (/not found/i.test(e.message)) {
+      if (isRider) { $("login").style.display = "none"; $("job").innerHTML = `<div class="card wait"><div class="ic">⚠️</div><p>เลขใบงานนี้ใช้ไม่ได้แล้ว (แผนอาจถูกยกเลิก)<br>ติดต่อร้านเพื่อขอเลขใหม่</p><button class="b" onclick="Auth.logout()">ออกจากระบบ</button></div>`; }
+      else { $("login").style.display = ""; $("err").textContent = "ไม่พบเลขใบงานนี้ ตรวจเลขอีกครั้ง"; }
+    } else if (manual) { $("err").textContent = e.message; }
+  }
+}
+
+function show(j) {
+  $("job").innerHTML = `
+    <div class="head" style="background:${j.color}">ไรเดอร์คนที่ <b>${j.riderNo}</b><br>วันที่ ${esc(j.date)}</div>
+    <div class="sum">
+      <div><span>ข้าวกล่องที่ต้องหยิบ</span><b>${j.boxes} กล่อง</b></div>
+      <div><span>จำนวนจุดส่ง</span><b>${j.stops.length} จุด</b></div>
+      <div><span>ออกจากร้าน</span><b>${esc(j.departTime)}</b></div>
+      <div><span>ต้องส่งให้เสร็จก่อน</span><b>${esc(j.deadlineTime)}</b></div>
+    </div>
+    <a class="b" href="${esc(j.mapUrl)}" target="_blank" rel="noopener">🗺️ เปิดแผนที่นำทางทั้งเส้นทาง</a>
+    <h2 class="t">ลำดับการส่ง</h2>
+    ${j.stops.map((s) => `
+      <div class="card stop">
+        <div class="num" style="background:${j.color}">${s.seq}</div>
+        <div style="flex:1">
+          <h3>จุดที่ ${s.seq}: บ้านคุณ ${esc(s.name)}</h3>
+          <p>📍 ${esc(s.address)}</p>
+          <p>📦 <span class="tag">${s.boxes} กล่อง</span> · ถึงโดยประมาณ <b>${esc(s.eta)}</b></p>
+          <a class="b sec" href="tel:${esc(s.phone)}">📞 โทร ${esc(s.phone)}</a>
+          <a class="b" href="${esc(s.mapUrl)}" target="_blank" rel="noopener">🧭 นำทางไปจุดนี้</a>
+        </div>
+      </div>`).join("")}
+    <p class="msg" style="text-align:center">รวมระยะทาง ${j.km} กม. · คาดว่าเสร็จ ${esc(j.finishTime)}</p>
+    ${isRider ? "" : `<a class="b sec" href="#/rider">ใส่เลขใบงานอื่น</a>`}`;
+}
+
+$("code").addEventListener("keydown", (e) => e.key === "Enter" && loadFromInput());
+if (isRider) $("login").style.display = "none";
+refresh(true);
+const timer = setInterval(refresh, 15000); // เช็กทุก 15 วินาที ถ้าร้านลบแผนจะขึ้นว่าเลขใบงานใช้ไม่ได้แล้ว
+Object.assign(window, { loadFromInput });
+return () => { clearInterval(timer); };
+}
+
+
+/* ---------- หน้าเดียว: เปลี่ยนหน้าด้วย #/ชื่อหน้า ไม่มีเส้นทางอื่นนอกจาก API ---------- */
+const hashParams = () => new URLSearchParams(location.hash.split("?")[1] || "");
+const go = (name, qs) => { location.hash = "#/" + name + (qs ? "?" + qs : ""); };
+const goReplace = (name, qs) => location.replace("#/" + name + (qs ? "?" + qs : ""));
+
+const VIEWS = {
+  login: { role: null, title: "เข้าสู่ระบบ - เส้นทางอร่อย", mount: mount_login },
+  home: { role: "owner", title: "หน้าหลัก - เส้นทางอร่อย", mount: mount_home },
+  customers: { role: "owner", title: "ลูกค้า - เส้นทางอร่อย", mount: mount_customers },
+  orders: { role: "owner", title: "ออเดอร์ - เส้นทางอร่อย", mount: mount_orders },
+  gps: { role: "owner", title: "เส้นทางอร่อย - จัดเส้นทางจัดส่ง", mount: mount_gps },
+  rider: { role: "any", title: "ใบงานไรเดอร์ - เส้นทางอร่อย", mount: mount_rider },
+};
+let cleanup = null;
+function route() {
+  if (cleanup) { try { cleanup(); } catch {} cleanup = null; }
+  window.onDateChange = null;
+  const name = (location.hash.match(/^#\/(\w+)/) || [])[1] || "login";
+  const view = VIEWS[name];
+  if (!view) { goReplace("login"); return; }
+  const a = Auth.session();
+  if (view.role && !a) { goReplace("login", "next=" + encodeURIComponent(name)); return; }
+  if (view.role === "owner" && a.role !== "owner") { goReplace("rider"); return; }
+  document.title = view.title;
+  $("top").innerHTML = "";
+  $("view").className = "v-" + name;
+  $("view").innerHTML = document.getElementById("tpl-" + name).innerHTML;
+  cleanup = view.mount() || null;
+  window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", route);
+route();
+
+</script>
+</body>
+</html>

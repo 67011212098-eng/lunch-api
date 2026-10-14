@@ -43,7 +43,7 @@ router.post("/optimize", async (req, res) => {
       res.status(400).json({ message: "date=YYYY-MM-DD is required" });
       return;
     }
-    const seed = req.body?.seed ?? randomInt(1, 2_000_000_000);
+    const seed = req.body?.seed ?? randomInt(1, 200_000_000) * 10;
     if (!Number.isInteger(seed)) {
       res.status(400).json({ message: "seed must be an integer" });
       return;
