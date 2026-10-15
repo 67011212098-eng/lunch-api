@@ -1036,11 +1036,11 @@ Object.assign(window, { addOrder, simulate, clearOrders, nearbyOrders, useCustom
 function mount_gps() {
 
     renderTop("gps", true);
-    window.onDateChange = async () => { await loadOrders(); restoreState(); };
+    window.onDateChange = async () => { await loadOrders(); await restore(); };
 
     let data = null;      // ผลล่าสุดจาก /route/optimize (แผนที่ดีที่สุดแผนเดียว)
     let map, layer;
-    let confirmedPlan = null, mapOpen = false, ordersSig = "";
+    let confirmedPlan = null, mapOpen = false, ordersSig = "", orderRows = [];
 
     /* ---------- จำสถานะไว้ (รีเฟรชแล้วหน้ายังเหมือนเดิม) ---------- */
     const KEY = "gpsState";
@@ -1054,21 +1054,39 @@ function mount_gps() {
     }
     function restoreState() {
       const s = allState()[$("date").value];
-      if (!s || !s.data || !s.data.riders) return;
-      if (s.sig !== ordersSig) { toast("ออเดอร์เปลี่ยนไปจากตอนคำนวณ จึงต้องคำนวณเส้นทางใหม่"); saveStateClear(); return; }
+      if (!s || !s.data || !s.data.riders) return false;
+      if (s.sig !== ordersSig) { toast("ออเดอร์เปลี่ยนไปจากตอนคำนวณ จึงต้องคำนวณเส้นทางใหม่"); saveStateClear(); return false; }
       data = s.data; confirmedPlan = s.confirmedPlan;
       seen.clear(); seen.add(planSig(data));
       $("btnMap").disabled = false;
       render();
       if (confirmedPlan) showPlan(confirmedPlan);
       if (s.mapOpen) openMap();
+      return true;
     }
+    // เครื่องนี้ไม่มีสถานะที่จำไว้ (เช่น เปิดจากอีกเครื่อง) → สร้างการ์ด "ยืนยันแผนแล้ว" ใหม่จาก DB
+    // ใช้ plan_id / job_code ใน GET /order แล้วดึงใบงานแต่ละใบด้วย GET /job/:code
+    async function restoreFromServer() {
+      const planId = Math.max(0, ...orderRows.map((o) => o.plan_id || 0));
+      if (!planId || orderRows.some((o) => o.plan_id !== planId)) return;
+      try {
+        const codes = [...new Set(orderRows.map((o) => o.job_code))];
+        const jobs = await Promise.all(codes.map((c) => call("/job/" + c)));
+        const sum = (a, f) => a.reduce((t, x) => t + f(x), 0);
+        if (sum(jobs, (j) => j.stops.length) !== orderRows.length || sum(jobs, (j) => j.boxes) !== sum(orderRows, (o) => o.boxes)) return;
+        const riders = jobs.map((j) => ({ riderNo: j.riderNo, color: j.color, code: j.code, boxes: j.boxes, finishTime: j.finishTime })).sort((a, b) => a.riderNo - b.riderNo);
+        confirmedPlan = { planId, date: $("date").value, riders, summary: { riders: riders.length } };
+        showPlan(confirmedPlan);
+      } catch { }
+    }
+    const restore = async () => { if (!restoreState()) await restoreFromServer(); };
     function saveStateClear() { try { const all = allState(); delete all[$("date").value]; localStorage.setItem(KEY, JSON.stringify(all)); } catch { } }
 
     /* ---------- โหลดออเดอร์ของวัน (จากหน้าจัดการออเดอร์) ---------- */
     async function loadOrders() {
       try {
         const rows = await call("/order?date=" + $("date").value);
+        orderRows = rows;
         ordersSig = rows.map((o) => o.id + ":" + o.boxes).join(",");
         data = null; confirmedPlan = null; recalcNote = null; recalcCount = 0; seen.clear(); $("btnMap").disabled = true;
         $("mapModal").classList.remove("open"); mapOpen = false; $("confirmed").style.display = "none";
@@ -1306,7 +1324,7 @@ async function deleteDayPlans() {
 /* ---------- ยืนยันแผน ---------- */
     function showPlan(r) {
       $("confirmed").style.display = "";
-      $("jobs").innerHTML = `<p class="msg">แผน #${r.planId} · ${r.summary.riders} ไรเดอร์ · กำไร ${money(r.summary.profit)}</p>` +
+      $("jobs").innerHTML = `<p class="msg">แผน #${r.planId} · ${r.summary.riders} ไรเดอร์${r.summary.profit === undefined ? "" : " · กำไร " + money(r.summary.profit)}</p>` +
         `<table><thead><tr><th>ไรเดอร์</th><th>เลขใบงาน</th><th class="n">กล่อง</th><th class="n">เสร็จ</th></tr></thead><tbody>${r.riders.map((x) =>
           `<tr><td><span class="dot" style="background:${x.color}"></span>คนที่ ${x.riderNo}</td><td><a href="/job/${esc(x.code)}" target="_blank" rel="noopener" title="เปิดใบงานของไรเดอร์คนนี้"><b style="font-size:18px;letter-spacing:2px">${esc(x.code)}</b></a></td><td class="n">${x.boxes}</td><td class="n">${x.finishTime}</td></tr>`).join("")}</tbody></table>`;
     }
@@ -1321,7 +1339,7 @@ async function deleteDayPlans() {
       } catch (e) { toast(e.message); }
     }
 
-    loadOrders().then(restoreState);
+    loadOrders().then(restore);
     if (PAGE.planId) toast("แผน #" + PAGE.planId + " ลบได้ด้วยปุ่ม \"ส่งเสร็จแล้ว / ล้างแผน\" หลังยืนยันแผน (ใบงานเปิดที่ /job/เลขใบงาน)");
 Object.assign(window, { optimize, openMap, clearPlan, deleteDayPlans, closeMap, reoptimizeNoLoss, confirmPlan });
 return () => { document.removeEventListener("keydown", onEsc); if (map) map.remove(); };

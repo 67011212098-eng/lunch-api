@@ -37,7 +37,7 @@ router.get("/nearby", async (req, res) => {
   }
 });
 
-// GET /order - ออเดอร์ของวันนั้นพร้อมข้อมูลลูกค้า (?date=YYYY-MM-DD ไม่ใส่ = วันนี้)
+// GET /order - ออเดอร์ของวันนั้นพร้อมข้อมูลลูกค้า (?date=YYYY-MM-DD ไม่ใส่ = วันนี้) plan_id / job_code = แผนล่าสุดที่ยืนยันแล้วที่มีออเดอร์นี้ (ไม่มี = null)
 router.get("/", async (req, res) => {
   try {
     const date = req.query.date ? String(req.query.date) : today();
@@ -47,7 +47,11 @@ router.get("/", async (req, res) => {
     }
     const [rows] = await conn.query(
       `SELECT o.id, o.customer_id, o.boxes, o.order_date,
-              c.firstname, c.lastname, c.phone, c.address, c.lat, c.lng
+              c.firstname, c.lastname, c.phone, c.address, c.lat, c.lng,
+              (SELECT j.plan_id FROM job_stop s JOIN job j ON j.id = s.job_id
+               WHERE s.order_id = o.id ORDER BY j.plan_id DESC LIMIT 1) AS plan_id,
+              (SELECT j.code FROM job_stop s JOIN job j ON j.id = s.job_id
+               WHERE s.order_id = o.id ORDER BY j.plan_id DESC LIMIT 1) AS job_code
        FROM orders o JOIN customer c ON c.id = o.customer_id
        WHERE o.order_date = ?
        ORDER BY o.id`,
