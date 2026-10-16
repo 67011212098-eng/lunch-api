@@ -8,8 +8,8 @@ export const CONFIG = {
   maxOrdersPerRider: 3,
   departMinutes: 11 * 60 + 30,
   deadlineMinutes: 12 * 60 + 30,
-  roadFactor: 1.3, // ข้อสมมติ: ระยะถนนจริงยาวกว่าเส้นตรง (โจทย์ไม่ได้ระบุ)
-  serviceMinutes: 2, // ข้อสมมติ: เวลาจอดส่งของต่อจุด (โจทย์ไม่ได้ระบุ)
+  roadFactor: 1.3, 
+  serviceMinutes: 2, 
 };
 
 export interface Point {
@@ -62,6 +62,7 @@ export function routeInfo(stops: Stop[]) {
   return { km, boxes, fee: riderFee(boxes, km), arrivals, lateCount };
 }
 
+//แบ่งกลุ่มแบบกวาดมุม (sweep) เรียงออเดอร์ตามมุมรอบร้านแล้วตัดเป็นกลุ่มละ 3
 const TWO_PI = 2 * Math.PI;
 
 function angleFrom(s: Point, startAngle: number): number {
@@ -187,7 +188,7 @@ function optimizeGroups(orders: Stop[], seed: number): Stop[][] {
 
 // สุ่มเริ่มต้นหลายรอบ (ตาม seed) แล้วเลือกแผนที่ค่าไรเดอร์ต่ำที่สุด
 const TRIES = 20;
-// seed ที่หารด้วย 10 ลงตัว (ค่าเริ่มต้นของ /route/optimize) ค้นหาเต็มที่ ส่วน seed อื่นค้นน้อยลง ได้แผนหลากหลายขึ้นเล็กน้อยตอนกดคำนวณใหม่
+// seed ที่หารด้วย 10 ลงตัว ค้นเต็ม 20 รอบ ส่วน seed อื่นค้น 3 รอบ
 const triesFor = (seed: number) => (seed % 10 === 0 ? TRIES : 3);
 
 function groupsCost(groups: Stop[][]) {

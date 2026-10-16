@@ -7,7 +7,7 @@ export const router = express.Router();
 const GMAPS = "https://www.google.com/maps/dir/?api=1";
 const point = (p: { lat: number; lng: number }) => `${p.lat},${p.lng}`;
 
-// GET /job/:code - ใบงานไรเดอร์จากเลข 6 หลัก (จำนวนกล่อง ลำดับจุดส่ง เวลาถึง ลิงก์แผนที่)
+// GET /job/:code - ใบงานไรเดอร์
 router.get("/:code", async (req, res) => {
   try {
     const code = req.params.code;
@@ -26,6 +26,7 @@ router.get("/:code", async (req, res) => {
       res.status(404).json({ message: "Job not found" });
       return;
     }
+    
     const [stopRows] = await conn.query("SELECT * FROM job_stop WHERE job_id = ? ORDER BY seq", [job.id]);
     const stops = (stopRows as any[]).map((s) => ({
       seq: s.seq,

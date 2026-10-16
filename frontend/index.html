@@ -232,7 +232,6 @@ header button.back {
     padding: 6px 12px
 }
 
-/* ---- login ---- */
 #view.v-login{display:flex;min-height:100vh;align-items:center;justify-content:center;padding:16px}
 #view.v-login .box{width:100%;max-width:400px}
 #view.v-login .logo{text-align:center;margin-bottom:16px}
@@ -248,7 +247,6 @@ header button.back {
 #view.v-login .go{width:100%;margin-top:16px;padding:13px;font-size:17px;font-weight:700}
 #view.v-login .err{color:#c92a2a;min-height:22px;margin-top:10px;font-size:14px}
 
-/* ---- home ---- */
 #view.v-home .hello{
       text-align: center;
       padding: 10px 0 0
@@ -296,16 +294,12 @@ header button.back {
       font-size: 15px
     }
 
-/* ---- customers ---- */
 #view.v-customers #cmap{
       height: 380px;
       border-radius: 10px;
       margin-top: 12px
     }
 
-/* ---- orders ---- */
-
-/* ---- gps ---- */
 #view.v-gps .stats{
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -448,7 +442,6 @@ header button.back {
       }
 }
 
-/* ---- rider ---- */
 #view.v-rider{font-size:17px}
 #view.v-rider .wrap{max-width:480px;margin:0 auto;padding:14px}
 #view.v-rider h2.t{font-size:18px;margin:18px 0 8px}
@@ -695,15 +688,12 @@ header button.back {
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// ตั้งค่าบัญชีเจ้าของร้าน (ใช้เฉพาะตอนเดโม/ทดสอบ)
-// ⚠️ ไฟล์นี้เปิดอ่านได้จากเบราว์เซอร์ ไม่ปลอดภัยสำหรับใช้งานจริง — ของจริงต้องตรวจรหัสผ่านที่ backend
-// ก่อนใช้งานจริงให้เปลี่ยนรหัสผ่านด้านล่าง
 window.AUTH_CONFIG = {
   owner: { username: "owner", password: "lunch1234" },
 };
 
 const Auth = (function () {
-  const KEY = "auth", TTL = 12 * 60 * 60 * 1000; // อยู่ในระบบ 12 ชั่วโมง
+  const KEY = "auth", TTL = 12 * 60 * 60 * 1000;
   const get = () => {
     try { const a = JSON.parse(localStorage.getItem(KEY)); if (a && a.exp > Date.now()) return a; } catch {}
     return null;
@@ -715,13 +705,10 @@ const Auth = (function () {
   };
 })();
 
-// โค้ดที่ทุกหน้าใช้ร่วมกัน: ตัวช่วย, เรียก API, หัวเว็บ + เมนู
-const SHOP = { lat: 16.2469, lng: 103.2522 }; // ตรงกับ CONFIG.shop ใน backend
+const SHOP = { lat: 16.2469, lng: 103.2522 };
 const $ = (id) => document.getElementById(id);
 const money = (n) => Number(n).toLocaleString("th-TH", { maximumFractionDigits: 2 }) + " ฿";
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-// ที่อยู่ backend: ใส่ ?api=http://host:port ต่อท้าย URL เพื่อกำหนดเอง (จำไว้ในแท็บนั้น)
-// ไม่ระบุ: เปิดผ่านพอร์ต 3000 หรือโดเมนจริง (เช่น Render) ใช้ origin เดียวกัน ส่วนกรณีอื่น (เปิดเป็นไฟล์ / Live Server) ใช้ http://127.0.0.1:3000
 const API = (() => {
   try {
     const q = new URLSearchParams(location.search).get("api");
@@ -730,7 +717,7 @@ const API = (() => {
     if (saved) return saved;
   } catch { }
   const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-  return location.protocol.startsWith("http") && (location.port === "3000" || !local) ? location.origin : "http://127.0.0.1:3000"; // ใช้ 127.0.0.1 แทน localhost กัน localhost ไปชนโปรแกรมอื่นที่จองพอร์ต 3000 ฝั่ง IPv6 (::1)
+  return location.protocol.startsWith("http") && (location.port === "3000" || !local) ? location.origin : "http://127.0.0.1:3000";
 })();
 const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
 
@@ -748,7 +735,6 @@ async function call(path, method = "GET", body) {
   return j;
 }
 
-// ลิงก์ของแต่ละหน้า = ชื่อเส้นตามคู่มือ (เซิร์ฟเวอร์ส่งหน้าเว็บนี้ให้เบราว์เซอร์ที่เปิดลิงก์เหล่านั้น)
 const PAGES = [
   ["home", "/", "🏠 หน้าหลัก"],
   ["customers", "/customer", "👥 ลูกค้า"],
@@ -757,14 +743,12 @@ const PAGES = [
   ["rider", "#", "🛵 หน้าจอไรเดอร์"],
 ];
 
-// หน้าใบงานไรเดอร์ = /job/เลข 6 หลัก จึงถามเลขใบงานก่อนเปิด
 function openJobPrompt() {
   const c = (prompt("กรอกเลขใบงาน 6 หลัก") || "").trim();
   if (/^\d{6}$/.test(c)) location.assign("/job/" + c);
   else if (c) toast("เลขใบงานต้องเป็นตัวเลข 6 หลัก");
 }
 
-// วาดหัวเว็บ + เมนูลงใน <div id="top">; withDate = มีช่องเลือกวันที่ (เปลี่ยนวันแล้วเรียก onDateChange)
 function renderTop(active, withDate) {
   $("top").innerHTML = `
     <header>
@@ -791,8 +775,6 @@ function leafletMap(el, center, zoom) {
 }
 const shopIcon = () => L.divIcon({ className: "", html: `<div class="pin" style="background:#222;width:30px;height:30px;font-size:16px">🏪</div>`, iconSize: [30, 30], iconAnchor: [15, 15] });
 
-
-/* ======================= หน้า: login ======================= */
 function mount_login() {
 
 function setRole(r) {
@@ -809,7 +791,7 @@ function loginOwner(e) {
   const o = (window.AUTH_CONFIG || {}).owner || {};
   if ($("user").value.trim() === o.username && $("pass").value === o.password) {
     Auth.login("owner", { name: "เจ้าของร้าน" });
-    route(); // ล็อกอินแล้วแสดงหน้าตาม URL เดิมที่เปิดมา
+    route();
   } else { $("err").textContent = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"; }
 }
 
@@ -818,7 +800,7 @@ async function loginRider(e) {
   const code = $("code").value.trim();
   if (!/^\d{6}$/.test(code)) { $("err").textContent = "เลขใบงานต้องเป็นตัวเลข 6 หลัก"; return; }
   try {
-    const job = await call("/job/" + code); // ให้ backend ตรวจว่ามีเลขใบงานนี้จริง
+    const job = await call("/job/" + code);
     Auth.login("rider", { code, name: "ไรเดอร์คนที่ " + job.riderNo });
     location.assign("/job/" + code);
   } catch (er) { $("err").textContent = /not found/i.test(er.message) ? "ไม่พบเลขใบงานนี้ ตรวจเลขอีกครั้ง" : er.message; }
@@ -827,7 +809,6 @@ Object.assign(window, { setRole, loginOwner, loginRider });
 
 }
 
-/* ======================= หน้า: home ======================= */
 function mount_home() {
 
     renderTop("home", false);
@@ -842,7 +823,6 @@ function mount_home() {
 
 }
 
-/* ======================= หน้า: customers ======================= */
 function mount_customers() {
 
     renderTop("customers", false);
@@ -929,7 +909,6 @@ function mount_customers() {
         resetForm(); loadCustomers();
       } catch (e) { toast(e.message); }
     }
-    // เปิดจากลิงก์ตามคู่มือ: /customer?name=… /customer?firstname=…&lastname=… /customer/nearby?lat=…&lng=… /customer/:id
     const U = qs();
     if (PAGE.nearby) {
       for (const [k, id] of [["lat", "cLat"], ["lng", "cLng"], ["radius", "cRadius"]]) if (U.get(k)) $(id).value = U.get(k);
@@ -946,7 +925,6 @@ Object.assign(window, { saveCustomer, resetForm, loadCustomers, nearbyCustomers,
 return () => { cmap.remove(); };
 }
 
-/* ======================= หน้า: orders ======================= */
 function mount_orders() {
 
     renderTop("orders", true);
@@ -1010,7 +988,6 @@ function mount_orders() {
           || `<tr><td colspan="7" class="msg">ไม่มีออเดอร์ในรัศมีนี้</td></tr>`;
       } catch (e) { toast(e.message); }
     }
-    // เปิดจากลิงก์ตามคู่มือ: /order?date=… /order/nearby?lat=…&lng=… /order/simulate /order/:id
     (async () => {
       const U = qs();
       if (PAGE.id) {
@@ -1034,17 +1011,15 @@ Object.assign(window, { addOrder, simulate, clearOrders, nearbyOrders, useCustom
 
 }
 
-/* ======================= หน้า: gps ======================= */
 function mount_gps() {
 
     renderTop("gps", true);
     window.onDateChange = async () => { await loadOrders(); await restore(); };
 
-    let data = null;      // ผลล่าสุดจาก /route/optimize (แผนที่ดีที่สุดแผนเดียว)
+    let data = null;
     let map, layer;
     let confirmedPlan = null, mapOpen = false, ordersSig = "", orderRows = [];
 
-    /* ---------- จำสถานะไว้ (รีเฟรชแล้วหน้ายังเหมือนเดิม) ---------- */
     const KEY = "gpsState";
     const allState = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } };
     function saveState() {
@@ -1066,8 +1041,6 @@ function mount_gps() {
       if (s.mapOpen) openMap();
       return true;
     }
-    // เครื่องนี้ไม่มีสถานะที่จำไว้ (เช่น เปิดจากอีกเครื่อง) → สร้างการ์ด "ยืนยันแผนแล้ว" ใหม่จาก DB
-    // ใช้ plan_id / job_code ใน GET /order แล้วดึงใบงานแต่ละใบด้วย GET /job/:code
     async function restoreFromServer() {
       const planId = Math.max(0, ...orderRows.map((o) => o.plan_id || 0));
       if (!planId || orderRows.some((o) => o.plan_id !== planId)) return;
@@ -1084,7 +1057,6 @@ function mount_gps() {
     const restore = async () => { if (!restoreState()) await restoreFromServer(); };
     function saveStateClear() { try { const all = allState(); delete all[$("date").value]; localStorage.setItem(KEY, JSON.stringify(all)); } catch { } }
 
-    /* ---------- โหลดออเดอร์ของวัน (จากหน้าจัดการออเดอร์) ---------- */
     async function loadOrders() {
       try {
         const rows = await call("/order?date=" + $("date").value);
@@ -1096,15 +1068,12 @@ function mount_gps() {
       } catch (e) { toast("โหลดออเดอร์ไม่ได้: " + e.message); }
     }
 
-    /* ---------- คำนวณเส้นทาง ---------- */
     let recalcNote = null, recalcCount = 0;
     const RECALC_TRIES = 6;
-    // seed ที่ไม่ลงท้ายด้วย 0 ทำให้ backend ค้นหาน้อยลง ได้แผนหลากหลายขึ้น (ยืนยันแผนด้วย seed เดิมแล้วได้แผนเดียวกับที่เห็น)
     const variantSeed = () => Math.floor(Math.random() * 190000000) * 10 + 1 + Math.floor(Math.random() * 9);
-    const seen = new Set();   // แผนที่เคยเสนอไปแล้วของวันนี้ (คำนวณใหม่แล้วจะไม่ได้แผนซ้ำ)
+    const seen = new Set();
     const planSig = (p) => p.riders.map((r) => r.stops.map((s) => s.orderId).join(">")).sort().join("|");
 
-    // เทียบแผนใหม่กับแผนก่อนหน้า เพื่อบอกผู้ใช้ว่าคำนวณใหม่แล้วเปลี่ยนไปอย่างไร
     function noteRecalc(prev, cur, tried = 0, cands = 0, none = false) {
       if (!prev) { recalcNote = null; return; }
       recalcCount++;
@@ -1151,7 +1120,6 @@ function mount_gps() {
         if (!prev || seed) {
           next = await call("/route/optimize", "POST", { date, ...(seed ? { seed } : {}) });
         } else {
-          // คำนวณใหม่: ลองหลายแผนพร้อมกัน เอาเฉพาะแผนที่ยังไม่เคยเสนอ ไม่ขาดทุน ไม่เลทเพิ่ม แล้วเลือกอันที่กำไรสูงสุด
           const res = await Promise.allSettled(Array.from({ length: RECALC_TRIES }, () => call("/route/optimize", "POST", { date, seed: variantSeed() })));
           const plans = res.filter((r) => r.status === "fulfilled").map((r) => r.value);
           if (!plans.length) throw res[0].reason;
@@ -1184,7 +1152,6 @@ function mount_gps() {
       finally { setBusy(false); }
     }
 
-    // ค้นหาแผนที่ไม่ขาดทุน: สุ่ม seed ใหม่ซ้ำ ๆ จนกว่าจะมีตัวเลือกที่กำไร >= 0
     async function reoptimizeNoLoss() {
       const btns = [...document.querySelectorAll(".btnNoLoss")], prev = data;
       btns.forEach((b) => (b.disabled = true));
@@ -1202,7 +1169,6 @@ function mount_gps() {
       finally { btns.forEach((b) => (b.disabled = false)); }
     }
 
-    /* ---------- แสดงผลสรุป ---------- */
     function summaryHTML(o) {
       const s = o.summary, loss = s.profit < 0;
       return `
@@ -1239,7 +1205,6 @@ function mount_gps() {
     <div class="legend"><b>สีเส้นทาง</b> <span class="msg">(เส้นประ = กำลังโหลดเส้นทางถนน)</span>${data.riders.map((r) => `<div><span class="dot" style="background:${r.color}"></span>ไรเดอร์คนที่ ${r.riderNo}: ${r.stops.length} จุด · ${r.km} กม. · ถึง ${r.finishTime}</div>`).join("")}</div>`;
     }
 
-    /* ---------- แผนที่ ---------- */
     function openMap() {
       if (!data) return;
       $("mapModal").classList.add("open"); mapOpen = true; saveState();
@@ -1256,7 +1221,6 @@ function mount_gps() {
 
     let drawToken = 0;
     const roadCache = new Map();
-    // ขอเส้นทางตามถนนจริงจาก OSRM (บริการสาธารณะฟรี) คืน null ถ้าขอไม่ได้ จะใช้เส้นตรงแทน
     async function roadRoute(pts) {
       const key = pts.map((p) => p.join(",")).join(";");
       if (!roadCache.has(key)) {
@@ -1277,7 +1241,6 @@ function mount_gps() {
       L.marker([SHOP.lat, SHOP.lng], { icon: L.divIcon({ className: "", html: `<div class="pin" style="background:#222;width:30px;height:30px;font-size:16px">🏪</div>`, iconSize: [30, 30], iconAnchor: [15, 15] }) }).bindTooltip("ร้าน").addTo(layer);
       data.riders.forEach((r) => {
         const pts = [[SHOP.lat, SHOP.lng], ...r.stops.map((s) => [s.lat, s.lng])];
-        // วาดเส้นตรงบาง ๆ ไปก่อน แล้วเปลี่ยนเป็นเส้นตามถนนจริงเมื่อ OSRM ตอบกลับ
         const fallback = L.polyline(pts, { color: r.color, weight: 3, opacity: 0.6, dashArray: "6 8" }).addTo(layer);
         roadRoute(pts).then((road) => {
           if (token !== drawToken || !road) return;
@@ -1295,8 +1258,6 @@ function mount_gps() {
       map.fitBounds(all, { padding: [40, 40] });
     }
 
-    /* ---------- ล้างแผน (หลังส่งเสร็จ) ---------- */
-// ถ้ายืนยันแผนไว้แล้ว จะลบแผนนั้นออกจากระบบด้วย (เลขใบงานใช้ไม่ได้) ออเดอร์ไม่ถูกลบ
 async function clearPlan() {
   const saved = confirmedPlan;
   if (!confirm(saved ? "ล้างแผนนี้? แผนที่ยืนยันแล้วจะถูกลบออกจากระบบ และเลขใบงานของไรเดอร์จะใช้ไม่ได้ (ออเดอร์ยังอยู่ ไม่ถูกลบ)" : "ล้างแผนที่คำนวณไว้ในหน้านี้? (ออเดอร์ในระบบยังอยู่ ไม่ถูกลบ)")) return;
@@ -1312,7 +1273,6 @@ async function clearPlan() {
 }
 function closeMapQuiet() { $("mapModal").classList.remove("open"); mapOpen = false; if (layer) layer.clearLayers(); }
 
-// ลบทุกแผนที่ยืนยันไว้ของวันที่เลือก (รวมที่ยืนยันจากเครื่องอื่น) ออเดอร์ไม่ถูกลบ
 async function deleteDayPlans() {
   const d = $("date").value;
   if (!confirm(`ลบแผนที่ยืนยันไว้ทั้งหมดของวันที่ ${d}? เลขใบงานของวันนั้นจะใช้ไม่ได้ (ออเดอร์ไม่ถูกลบ)`)) return;
@@ -1323,14 +1283,12 @@ async function deleteDayPlans() {
   } catch (e) { toast(e.message); }
 }
 
-/* ---------- ยืนยันแผน ---------- */
     function showPlan(r) {
       $("confirmed").style.display = "";
       $("jobs").innerHTML = `<p class="msg">แผน #${r.planId} · ${r.summary.riders} ไรเดอร์${r.summary.profit === undefined ? "" : " · กำไร " + money(r.summary.profit)}</p>` +
         `<table><thead><tr><th>ไรเดอร์</th><th>เลขใบงาน</th><th class="n">กล่อง</th><th class="n">เสร็จ</th></tr></thead><tbody>${r.riders.map((x) =>
           `<tr><td><span class="dot" style="background:${x.color}"></span>คนที่ ${x.riderNo}</td><td><a href="/job/${esc(x.code)}" target="_blank" rel="noopener" title="เปิดใบงานของไรเดอร์คนนี้"><b style="font-size:18px;letter-spacing:2px">${esc(x.code)}</b></a></td><td class="n">${x.boxes}</td><td class="n">${x.finishTime}</td></tr>`).join("")}</tbody></table>`;
     }
-    // กด "ยืนยันแผนนี้" → บันทึกแผนและออกเลขใบงาน 6 หลักให้ไรเดอร์แต่ละคน
     async function confirmPlan() {
       if (data.summary.profit < 0 && !confirm("แผนนี้ขาดทุน ต้องการยืนยันจริงหรือไม่?")) return;
       try {
@@ -1347,12 +1305,10 @@ Object.assign(window, { optimize, openMap, clearPlan, deleteDayPlans, closeMap, 
 return () => { document.removeEventListener("keydown", onEsc); if (map) map.remove(); };
 }
 
-/* ======================= หน้า: rider ======================= */
 function mount_rider() {
 
 renderTop("rider", false);
 
-// เปิดที่ /job/เลขใบงาน (ลิงก์ตามคู่มือ) ใครมีเลขก็ดูใบงานนั้นได้
 const S = Auth.session();
 const isRider = S && S.role === "rider";
 let current = PAGE.code;
@@ -1370,7 +1326,7 @@ async function refresh(manual) {
   try {
     const j = await call("/job/" + current);
     const json = JSON.stringify(j);
-    if (json === lastJson) return; // ไม่มีอะไรเปลี่ยน ไม่ต้องวาดใหม่
+    if (json === lastJson) return;
     lastJson = json;
     $("login").style.display = "none";
     show(j);
@@ -1413,13 +1369,11 @@ function show(j) {
 $("code").addEventListener("keydown", (e) => e.key === "Enter" && loadFromInput());
 $("login").style.display = "none";
 refresh(true);
-const timer = setInterval(refresh, 15000); // เช็กทุก 15 วินาที ถ้าร้านลบแผนจะขึ้นว่าเลขใบงานใช้ไม่ได้แล้ว
+const timer = setInterval(refresh, 15000);
 Object.assign(window, { loadFromInput });
 return () => { clearInterval(timer); };
 }
 
-
-/* ---------- หน้าเว็บอยู่ที่ชื่อเส้นเดียวกับในคู่มือ (เซิร์ฟเวอร์ส่งไฟล์นี้ให้เบราว์เซอร์ที่เปิดลิงก์เหล่านั้น) ---------- */
 const qs = () => new URLSearchParams(location.search);
 const setUrl = (u) => { try { history.replaceState(null, "", u); } catch { } };
 
@@ -1432,7 +1386,6 @@ const VIEWS = {
   rider: { title: "ใบงานไรเดอร์ - เส้นทางอร่อย", mount: mount_rider },
 };
 
-// ชื่อเส้นในคู่มือ -> หน้าที่แสดง
 function parsePath() {
   const p = location.pathname.replace(/\/+$/, "") || "/";
   let m;
@@ -1457,7 +1410,7 @@ function route() {
   const a = Auth.session();
   let name = PAGE.name;
   if (name !== "rider") {
-    if (!a) name = "login"; // ยังไม่ล็อกอิน: แสดงหน้าล็อกอินที่ URL เดิม ล็อกอินแล้วจะเห็นหน้าตาม URL นั้น
+    if (!a) name = "login";
     else if (a.role !== "owner") { location.replace("/job/" + a.code); return; }
   }
   const d = qs().get("date");

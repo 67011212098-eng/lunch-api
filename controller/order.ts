@@ -12,7 +12,7 @@ const today = () =>
 const validBoxes = (b: unknown) => Number.isInteger(b) && (b as number) >= 1 && (b as number) <= 3;
 const validDate = (d: unknown) => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d);
 
-// GET /order/nearby - ออเดอร์ทุกวันในระยะ 2 กม. จากพิกัด ?lat= ?lng= (เปลี่ยนระยะด้วย ?radius=) เรียงใกล้ไปไกล
+// GET /order/nearby - ค้นออเดอร์ใกล้พิกัด
 router.get("/nearby", async (req, res) => {
   try {
     const q = parseNearby(req.query, 2);
@@ -37,7 +37,7 @@ router.get("/nearby", async (req, res) => {
   }
 });
 
-// GET /order - ออเดอร์ของวันนั้นพร้อมข้อมูลลูกค้า (?date=YYYY-MM-DD ไม่ใส่ = วันนี้) plan_id / job_code = แผนล่าสุดที่ยืนยันแล้วที่มีออเดอร์นี้ (ไม่มี = null)
+// GET /order - ดูออเดอร์ตามวัน
 router.get("/", async (req, res) => {
   try {
     const date = req.query.date ? String(req.query.date) : today();
@@ -63,24 +63,28 @@ router.get("/", async (req, res) => {
   }
 });
 
-// POST /order - เพิ่มออเดอร์ (boxes 1-3 กล่อง, ไม่ใส่ date = วันนี้)
+// POST /order - เพิ่มออเดอร์
 router.post("/", async (req, res) => {
   try {
     const o: OrderPostRequest = req.body;
     const date = o?.date ?? today();
+    
     if (!o?.customerId || !validBoxes(o.boxes) || !validDate(date)) {
       res.status(400).json({ message: "customerId and boxes (1-3) are required, date must be YYYY-MM-DD" });
       return;
     }
+
     const [cust] = await conn.query("SELECT id FROM customer WHERE id = ?", [o.customerId]);
     if ((cust as any[]).length === 0) {
       res.status(404).json({ message: "Customer not found" });
       return;
     }
+
     const [result] = await conn.query(
       "INSERT INTO orders (customer_id, boxes, order_date) VALUES (?, ?, ?)",
       [o.customerId, o.boxes, date]
     );
+    
     const r = result as any;
     res.status(201).json({ affected_row: r.affectedRows, last_idx: r.insertId });
   } catch (error) {
@@ -88,7 +92,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-// PUT /order/:id - แก้จำนวนกล่อง (1-3)
+// PUT /order/:id - แก้จำนวนกล่อง
 router.put("/:id", async (req, res) => {
   try {
     if (!validBoxes(req.body?.boxes)) {
@@ -110,7 +114,7 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// DELETE /order/simulate - ล้างออเดอร์ทั้งหมด (ใส่ ?customers=true เพื่อลบลูกค้าจำลองด้วย)
+// DELETE /order/simulate - ล้างออเดอร์ทั้งหมด
 router.delete("/simulate", async (req, res) => {
   try {
     const [o] = await conn.query("DELETE FROM orders");
@@ -128,7 +132,7 @@ router.delete("/simulate", async (req, res) => {
   }
 });
 
-// DELETE /order/:id - ลบออเดอร์รายการเดียว
+// DELETE /order/:id - ลบออเดอร์
 router.delete("/:id", async (req, res) => {
   try {
     const [result] = await conn.query("DELETE FROM orders WHERE id = ?", [req.params.id]);
@@ -143,7 +147,7 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-// POST /order/simulate - จำลองออเดอร์ (ไม่ใส่ count = สุ่ม 20-30 รายการ)
+// POST /order/simulate - จำลองออเดอร์
 router.post("/simulate", async (req, res) => {
   try {
     const date = req.body?.date ?? today();

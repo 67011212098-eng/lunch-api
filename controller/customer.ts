@@ -5,16 +5,18 @@ import { DISTANCE_KM_SQL, parseNearby } from "../services/geo";
 
 export const router = express.Router();
 
-// GET /customer - ดูรายชื่อลูกค้าทั้งหมด ค้นหาด้วย ?name= (ชื่อหรือนามสกุล) ?firstname= ?lastname=
+// GET /customer - ดูรายชื่อลูกค้า
 router.get("/", async (req, res) => {
   try {
     const where: string[] = [];
     const params: string[] = [];
+
     const like = (v: unknown) => "%" + String(v).trim() + "%";
     if (req.query.name) {
       where.push("(firstname LIKE ? OR lastname LIKE ?)");
       params.push(like(req.query.name), like(req.query.name));
     }
+    
     if (req.query.firstname) { where.push("firstname LIKE ?"); params.push(like(req.query.firstname)); }
     if (req.query.lastname) { where.push("lastname LIKE ?"); params.push(like(req.query.lastname)); }
 
@@ -26,7 +28,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// POST /customer - เพิ่มลูกค้าใหม่ (เบอร์โทรซ้ำตอบ 409)
+// POST /customer - เพิ่มลูกค้า
 router.post("/", async (req, res) => {
   try {
     const c: CustomerPostRequest = req.body;
@@ -49,7 +51,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-// GET /customer/nearby - ลูกค้าในระยะ 1 กม. จากพิกัด ?lat= ?lng= (เปลี่ยนระยะด้วย ?radius=) เรียงใกล้ไปไกล
+// GET /customer/nearby - ค้นลูกค้าใกล้พิกัด
 router.get("/nearby", async (req, res) => {
   try {
     const q = parseNearby(req.query, 1);
@@ -72,7 +74,7 @@ router.get("/nearby", async (req, res) => {
   }
 });
 
-// PUT /customer/:id - แก้ไขลูกค้า ส่งเฉพาะช่องที่ต้องการแก้ได้
+// PUT /customer/:id - แก้ไขลูกค้า
 router.put("/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -105,7 +107,7 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// DELETE /customer/:id - ลบลูกค้า ถ้ามีออเดอร์ตอบ 409 (ใส่ ?force=true เพื่อลบออเดอร์ของคนนี้ด้วย)
+// DELETE /customer/:id - ลบลูกค้า
 router.delete("/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);

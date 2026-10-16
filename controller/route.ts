@@ -35,7 +35,7 @@ async function newJobCode(db: PoolConnection): Promise<string> {
   }
 }
 
-// POST /route/optimize - คำนวณแผนจัดเส้นทางที่ดีที่สุด (ยังไม่บันทึก) ไม่ส่ง seed หรือส่ง seed ใหม่ = คำนวณใหม่
+// POST /route/optimize - คำนวณแผนจัดเส้นทาง
 router.post("/optimize", async (req, res) => {
   try {
     const date = req.body?.date;
@@ -48,6 +48,7 @@ router.post("/optimize", async (req, res) => {
       res.status(400).json({ message: "seed must be an integer" });
       return;
     }
+
     const stops = await loadStops(date);
     res.json({ date, seed, ...buildPlan(stops, seed) });
   } catch (error) {
@@ -55,12 +56,13 @@ router.post("/optimize", async (req, res) => {
   }
 });
 
-// POST /route/plan - ยืนยันแผนจาก seed ที่ได้จาก /route/optimize บันทึกลงฐานข้อมูล และออกเลขใบงานให้ไรเดอร์แต่ละคน
+// POST /route/plan - ยืนยันแผนและออกเลขใบงาน
 router.post("/plan", async (req, res) => {
   let db: PoolConnection | undefined;
   try {
     const date = req.body?.date;
     const seed = req.body?.seed;
+
     if (!validDate(date)) {
       res.status(400).json({ message: "date=YYYY-MM-DD is required" });
       return;
@@ -69,11 +71,13 @@ router.post("/plan", async (req, res) => {
       res.status(400).json({ message: "seed is required (integer from /route/optimize)" });
       return;
     }
+
     const stops = await loadStops(date);
     if (stops.length === 0) {
       res.status(400).json({ message: "No orders on this date" });
       return;
     }
+
     const plan = buildPlan(stops, seed);
 
     db = await conn.getConnection();
@@ -111,7 +115,7 @@ router.post("/plan", async (req, res) => {
   }
 });
 
-// DELETE /route/plan/:id - ลบแผนตาม id (ใบงานและจุดส่งของแผนนั้นถูกลบตามอัตโนมัติ)
+// DELETE /route/plan/:id - ลบแผนตาม id
 router.delete("/plan/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -131,7 +135,7 @@ router.delete("/plan/:id", async (req, res) => {
   }
 });
 
-// DELETE /route/plan?date=YYYY-MM-DD - ลบทุกแผนของวันนั้น (ต้องระบุ date)
+// DELETE /route/plan?date= - ลบแผนทั้งวัน
 router.delete("/plan", async (req, res) => {
   try {
     const date = req.query.date;
