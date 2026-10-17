@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "angular",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start", "--", "--port", "4200"],
+      "port": 4200,
+      "env": { "NG_CLI_ANALYTICS": "false" }
+    },
+    {
+      "name": "backend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:/lunch-api-main", "run", "dev"],
+      "port": 3000
+    }
+  ]
+}
