@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ตารางทุกหน้าใช้ขอบและระยะเดียวกัน (ตั้งที่ระดับ element ให้คลาสอย่าง text-right ทับได้) */
+@layer base {
+  th, td { @apply px-2 py-[7px] border-b border-line text-left; }
+  th { @apply font-semibold text-mute; }
+}
+
+/* ปุ่ม การ์ด และช่องกรอกที่ใช้ซ้ำทุกหน้า รวมคลาส Tailwind ไว้เป็นชื่อเดียว */
+@layer components {
+  .card { @apply bg-white border border-line rounded-xl p-4; }
+  .btn { @apply px-3.5 py-2 rounded-lg bg-brand text-white cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed; }
+  .btn-sec { @apply px-3.5 py-2 rounded-lg bg-white text-ink border border-line cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed; }
+  .field { @apply px-[9px] py-[7px] border border-line rounded-md text-ink; }
+}

@@ -20,15 +20,17 @@ app.use(
 app.use(express.text());
 app.use(express.json());
 
-// ส่งหน้าเว็บให้เบราว์เซอร์ที่เปิดลิงก์ตามคู่มือ
-const pageLinks = [/^\/$/, /^\/customer(\/(nearby|\d+))?\/?$/, /^\/order(\/(nearby|simulate|\d+))?\/?$/, /^\/route\/(optimize|plan)(\/\d+)?\/?$/, /^\/job\/[^/]+\/?$/];
+
+const web = path.join(process.cwd(), "frontend", "build");
+const pageLinks = [/^\/$/, /^\/customer(\/(nearby|\d+))?\/?$/, /^\/order(\/(nearby|simulate|\d+))?\/?$/, /^\/route\/(optimize|plan)(\/\d+)?\/?$/, /^\/job\/[^/]+\/?$/, /^\/(login|rider)\/?$/];
 app.use((req, res, next) => {
   if (req.method === "GET" && req.headers.accept?.includes("text/html") && pageLinks.some((re) => re.test(req.path))) {
-    res.sendFile(path.join(process.cwd(), "frontend", "index.html"));
+    res.sendFile(path.join(web, "index.html"));
     return;
   }
   next();
 });
+app.use(express.static(web, { index: false }));
 
 app.use("/", index);
 app.use("/customer", customer);

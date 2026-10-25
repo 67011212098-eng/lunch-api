@@ -40,5 +40,7 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
-  }
+  },
+  // หน้าเว็บ Angular ใน frontend/ มี tsconfig ของตัวเอง ไม่ต้องคอมไพล์รวมกับ backend
+  "exclude": ["node_modules", "dist", "frontend"]
 }
